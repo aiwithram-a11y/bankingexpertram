@@ -1,0 +1,40 @@
+# Secrets
+.openai_key
+config.json
+*.env
+.env*
+
+# Generated pipeline outputs
+script.md
+script_editor.xlsx
+revised_script.md
+image_mapping.json
+pipeline_meta.json
+pipeline_log.jsonl
+
+# Video / audio / image outputs (regenerated each run)
+output_v19/
+images/*.jpeg
+images/*.png
+*.mp4
+*.wav
+*.mp3
+
+# Thumbnails (old runs)
+thumbnail_*.png
+thumbnail_*.jpeg
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Backups
+*.bak
+*_old.py

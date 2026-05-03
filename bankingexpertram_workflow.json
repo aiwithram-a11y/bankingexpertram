@@ -1,0 +1,976 @@
+{
+  "name": "bankingexperram_video_pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(\n    'cd \"/Users/ramdudeja/Desktop/bankingexpertram\" && python3 script_to_excel.py 2>&1',\n    {\n      encoding: 'utf8',\n      timeout: 300000,\n      shell: '/bin/bash'\n    }\n  );\n} catch(e) {\n  stdout   = e.stdout  || '';\n  stderr   = e.stderr  || e.message || '';\n  exitCode = e.status  || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
+      },
+      "id": "78d59527-fd19-475c-ac9d-9d5de3ab9792",
+      "name": "🐍 Run: script_to_excel.py",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded path ────────────────────────────────────────────────────────────\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nconst stdout    = $input.first().json.stdout || '';\nconst stderr    = $input.first().json.stderr || '';\n\nif (!fs.existsSync(excelPath)) {\n  throw new Error(`script_to_excel.py failed.\\nstdout: ${stdout}\\nstderr: ${stderr}`);\n}\n\nconst pyCode = `\nimport openpyxl, os, json, sys\nfrom openpyxl.worksheet.datavalidation import DataValidation\n\nexcel_path = sys.argv[1]\nimg_dir    = sys.argv[2]\n\nwb = openpyxl.load_workbook(excel_path)\nws = wb['Script Editor']\n\nTEXT_COL   = 1\nIMAGE_COL  = 2\nDATA_START = 4\n\ndata_rows = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        data_rows.append(row[0].row)\n\nn = len(data_rows)\nprint(f\"Script rows found: {n}\", file=sys.stderr)\n\nif n < 2:\n    print(json.dumps({\"success\": False, \"reason\": \"too few rows\", \"paragraphs\": n}))\n    sys.exit(0)\n\nfor i, row_num in enumerate(data_rows):\n    if i == 0 or i == n - 1:\n        ws.cell(row=row_num, column=IMAGE_COL).value = 0\n    else:\n        ws.cell(row=row_num, column=IMAGE_COL).value = i\n\ngen_images = sorted(\n    [f.replace('.jpeg','') for f in os.listdir(img_dir)\n     if f.startswith('image') and f.endswith('.jpeg') and f != 'image0.jpeg'],\n    key=lambda x: int(x.replace('image','')) if x.replace('image','').isdigit() else 9999\n)\n\nif 'Image Reference' in wb.sheetnames:\n    ref_ws = wb['Image Reference']\n    for row in ref_ws.iter_rows(min_row=2):\n        for cell in row:\n            cell.value = None\n    for idx, name in enumerate(gen_images):\n        ref_ws.cell(row=idx+2, column=1).value = int(name.replace('image',''))\n        ref_ws.cell(row=idx+2, column=2).value = name + '.jpeg'\n\nws.data_validations.dataValidation = [\n    dv for dv in ws.data_validations.dataValidation\n    if 'B' not in str(dv.sqref)\n]\n\nmax_img  = max([int(name.replace('image','')) for name in gen_images], default=0)\nnum_list = ','.join(str(x) for x in range(0, max_img + 1))\ndv = DataValidation(\n    type='list',\n    formula1='\"' + num_list + '\"',\n    allow_blank=True,\n    showErrorMessage=False\n)\nlast_row = data_rows[-1]\ndv.sqref = f'B{DATA_START}:B{last_row}'\nws.add_data_validation(dv)\n\nwb.save(excel_path)\nprint(json.dumps({\n    \"success\":         True,\n    \"paragraphs\":      n,\n    \"images_assigned\": n,\n    \"first_row\":       0,\n    \"last_row\":        0,\n    \"middle\":          f\"1 to {n-2}\" if n > 2 else \"none\"\n}))\n`;\n\nconst pyPath = path.join(dir, '_auto_mapper_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\n\nlet mapResult = '', mapError = '';\ntry {\n  mapResult = execSync(\n    `python3 \"${pyPath}\" \"${excelPath}\" \"${dir}\"`,\n    { encoding: 'utf8', timeout: 30000 }\n  );\n} catch (e) {\n  mapError = (e.stderr || '') + '\\n' + (e.message || '');\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\n\nif (mapError && !mapResult.includes('\"success\": true')) {\n  throw new Error(`Auto-mapper failed:\\n${mapError}`);\n}\n\nlet mapJson = {};\ntry { mapJson = JSON.parse(mapResult.trim()); } catch(_) {}\n\nconst stats = fs.statSync(excelPath);\nreturn [{ json: {\n  excelPath,\n  excelSizeKb:  Math.round(stats.size / 1024),\n  autoMap:      mapJson,\n  autoMapError: mapError.trim().slice(-300),\n  createdAt:    new Date().toISOString()\n} }];"
+      },
+      "id": "2ee3989b-17d8-4ab0-897f-c6f3373a3d7d",
+      "name": "✅ Check Excel Created",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(`cd \"${dir}\" && python3 excel_to_video.py 2>&1`, {\n    encoding: 'utf8',\n    timeout: 300000,\n    shell: '/bin/bash'\n  });\n} catch(e) {\n  stdout = e.stdout || '';\n  stderr = e.stderr || e.message || '';\n  exitCode = e.status || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
+      },
+      "id": "cdbf353a-c293-40fd-a567-5a77bbaa5f39",
+      "name": "🐍 Run: excel_to_video.py",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(`cd \"${dir}\" && python3 video_generator.py --article revised_script.md --image-map script_editor.xlsx 2>&1`, {\n    encoding: 'utf8',\n    timeout: 300000,\n    shell: '/bin/bash'\n  });\n} catch(e) {\n  stdout = e.stdout || '';\n  stderr = e.stderr || e.message || '';\n  exitCode = e.status || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
+      },
+      "id": "57685eee-7ccc-43ea-a8a0-d1062ffdfc7b",
+      "name": "🎬 Run: generate_video_different_images.py",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir    = rawDir.split(',')[0].trim();\nconst imgDir = path.join(dir, 'images');\nconst stdout = $input.first().json.stdout || '';\nconst stderr = $input.first().json.stderr || '';\n\nlet videoPath = null;\n\n// 1. Path printed in script stdout\nconst m = stdout.match(/File\\s*:\\s*(.+\\.mp4)/);\nif (m) { const fp = m[1].trim(); if (fs.existsSync(fp)) videoPath = fp; }\n\n// 2. Flat candidates in root\nif (!videoPath) {\n  for (const name of ['final_video.mp4','output_video.mp4','rrnews_video.mp4','video.mp4']) {\n    const fp = path.join(dir, name);\n    if (fs.existsSync(fp)) { videoPath = fp; break; }\n  }\n}\n\n// 3. Newest output_* subdirectory\nif (!videoPath) {\n  const subs = fs.readdirSync(dir)\n    .filter(e => e.startsWith('output_'))\n    .sort().reverse();\n  outer: for (const sub of subs) {\n    const subPath = path.join(dir, sub);\n    if (!fs.statSync(subPath).isDirectory()) continue;\n    for (const name of ['final_video.mp4','output_video.mp4','video.mp4']) {\n      const fp = path.join(subPath, name);\n      if (fs.existsSync(fp)) { videoPath = fp; break outer; }\n    }\n  }\n}\n\nif (!videoPath) throw new Error(\n  `Video not found.\\nstdout: ${stdout.slice(-500)}\\nstderr: ${stderr.slice(-300)}`\n);\n\nconst videoSizeMb   = Math.round(fs.statSync(videoPath).size / (1024*1024) * 10) / 10;\nconst thumbnailPath = path.join(imgDir, 'image0.jpeg');   // ← images/ subdir\nconst hasThumbnail  = fs.existsSync(thumbnailPath);\n\nreturn [{ json: {\n  videoPath,\n  videoSizeMb,\n  thumbnailPath,\n  hasThumbnail,\n  generatedAt: new Date().toISOString(),\n  genOutput: stdout.slice(-300)\n} }];"
+      },
+      "id": "a4a9d414-794f-410f-86a5-ced30c667e93",
+      "name": "🔍 Check Video Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        304
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        608
+      ],
+      "id": "8d08c3de-48d3-48b3-9d0e-18fa7d5875ce",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs   = require('fs');\nconst path = require('path');\n\n// ── Hardcoded working directory ───────────────────────────────────────────────\nconst dir = '/Users/ramdudeja/Desktop/bankingexpertram';\n\n// ── Read script.md ────────────────────────────────────────────────────────────\nconst scriptPath = path.join(dir, 'script.md');\nif (!fs.existsSync(scriptPath)) {\n  throw new Error(`script.md not found at: ${scriptPath}`);\n}\nconst scriptMd = fs.readFileSync(scriptPath, 'utf8');\n\n// ── Count paragraphs ──────────────────────────────────────────────────────────\nconst paragraphs     = scriptMd.split(/\\n\\n+/).map(p => p.trim()).filter(p => p.length > 0);\nconst paragraphCount = paragraphs.length;\nconst imagesNeeded   = Math.max(1, paragraphCount - 2);\n\n// ── Extract title & subtitle from first two non-empty lines ───────────────────\nconst lines    = scriptMd.split('\\n').map(l => l.trim()).filter(l => l.length > 0);\nconst title    = lines[0] ? lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim() : 'Cyber Fraud Alert';\nconst subtitle = lines[1] ? lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim() : 'Apne aap ko bachao';\n\n// ── Try structured NEWS SUMMARY block first ───────────────────────────────────\nlet newsText = '';\nlet stories  = [];\n\nconst newsMatch = scriptMd.match(/## NEWS SUMMARY\\n([\\s\\S]*?)\\n---/);\nif (newsMatch) {\n  newsText = newsMatch[1].trim();\n  const storyRegex = /NEWS (\\d+): (.+?)\\n([\\s\\S]*?)(?=NEWS \\d+:|$)/g;\n  let match;\n  while ((match = storyRegex.exec(newsText)) !== null) {\n    stories.push({\n      index:    parseInt(match[1]),\n      headline: match[2].trim(),\n      summary:  match[3].trim().split('\\n')[0]\n    });\n  }\n}\n\n// ── Fallback: plain Hindi narrative script ────────────────────────────────────\nif (stories.length === 0) {\n  newsText = scriptMd.slice(0, 3000);\n  stories  = paragraphs.slice(0, imagesNeeded).map((para, i) => ({\n    index:    i + 1,\n    headline: para.split(/[।.!?]/)[0].trim().slice(0, 80) || `Scene ${i + 1}`,\n    summary:  para.slice(0, 200)\n  }));\n}\n\n// ── Build numbered paragraphs for image prompt generation ─────────────────────\n// Skip first para (title line) and last para (outro/CTA) — no images needed\nconst contentParagraphs  = paragraphs.slice(1, paragraphs.length - 1);\nconst numberedParagraphs = contentParagraphs\n  .slice(0, imagesNeeded)\n  .map((para, i) => `PARAGRAPH ${i + 1}:\\n${para}`)\n  .join('\\n\\n');\n\n// ── Return ────────────────────────────────────────────────────────────────────\nreturn [{\n  json: {\n    title,\n    subtitle,\n    newsText,\n    numberedParagraphs,\n    stories,\n    paragraphCount,\n    imagesNeeded,\n    scriptPath\n  }\n}];"
+      },
+      "id": "11430425-d0d1-491f-bebb-1052b34980d2",
+      "name": "📖 Load script.md from Disk1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert AI image prompt engineer for a YouTube news channel called RR+ News — India's positive news channel. You create highly detailed, cinematic image generation prompts.",
+              "role": "system"
+            },
+            {
+              "content": "=Generate exactly {{ $json.imagesNeeded }} AI image generation prompts, one for each numbered paragraph below.\nEach prompt must visually illustrate EXACTLY what that specific paragraph is describing — do not create generic fraud scenes.\n\nNOTE: image0.jpeg is reserved as the thumbnail and will be created separately with text overlay. Your job is to generate prompts for image1.jpeg onwards only.\n\nRequirements for each prompt:\n- Ultra realistic photographic style, natural daylight or warm indoor lighting preferred\n- Lighting must be REALISTIC: bright daylight, warm tube light, natural window light, golden hour — avoid dark/dramatic lighting unless the paragraph specifically describes a night scene\n- Describe environment, lighting, time of day, mood\n- Specify camera angle explicitly (eye level, over-the-shoulder, close-up, wide shot etc.)\n- Clear Indian middle-class context (people, home settings, bank branches, mobile phones, offices)\n- No text, signs, screens, or readable content visible in the image\n- Facial expressions must match the paragraph emotion: curious, worried, shocked, relieved, alert — vary them per scene\n- Show the SPECIFIC action described in the paragraph: downloading an app, tapping allow on a phone, reading spam emails, checking bank SMS, etc.\n- 2–3 sentences per prompt\n\nIndian context specifics:\n- Characters: middle-class Indians, college students, housewives, elderly people, small shopkeepers\n- Locations: Indian homes, bank branches, college hostels, chai stalls, metro stations\n- Attire: sarees, kurta-pyjama, casual Indian wear — no western formal attire\n- Lighting: bright afternoon sunlight through windows, warm kitchen light, natural daylight — keep it realistic\n\nReturn ONLY a valid JSON array with exactly {{ $json.imagesNeeded }} items, no markdown, no explanation:\n[\n  {\n    \"newsIndex\": 1,\n    \"headline\": \"short topic of this paragraph\",\n    \"prompt\": \"detailed image prompt that matches this paragraph's specific scene\"\n  }\n]\n\nScript paragraphs (generate one prompt per numbered paragraph, in order):\n{{ $json.numberedParagraphs }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e762c3a2-5b8a-4c62-978d-a0f4e84c621a",
+      "name": "🎨 OpenAI: Generate Image Prompts1",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.7,
+      "position": [
+        -592,
+        64
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "YI9JGmo4psgbeZWd",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json?.message?.content || $input.first().json?.content || '';\nlet jsonStr = raw;\nconst m = raw.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\nif (m) jsonStr = m[1];\nlet promptsData;\ntry { promptsData = JSON.parse(jsonStr.trim()); }\ncatch(e) { const a = jsonStr.match(/\\[([\\s\\S]*)\\]/); promptsData = JSON.parse('[' + a[1] + ']'); }\n\n// Start from image1 — image0 is NEVER generated (it's the existing thumbnail)\nconst flat = promptsData.map((item, idx) => ({\n  news_index: item.newsIndex || item.news_index || (idx + 1),\n  headline: item.headline || `Story ${idx + 1}`,\n  prompt: item.prompt || '',\n  filename: `image${idx + 1}.jpeg`,\n  imageIndex: idx + 1,\n  is_thumbnail: false\n}));\n\nreturn flat.map(f => ({ json: f }));"
+      },
+      "id": "e0d7fc57-a91f-4431-9a0b-febaee9a8410",
+      "name": "⚙️ Parse & Flatten Prompts1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "696bc414-ff62-4bd5-8662-433792b967ea",
+      "name": "⏰ Daily Schedule (7AM IST)1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1136,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nconst scriptPath = path.join(dir, 'script.md');\n\nif (!fs.existsSync(scriptPath)) throw new Error(`script.md not found at ${scriptPath}`);\n\nconst content = fs.readFileSync(scriptPath, 'utf8').trim();\n\nreturn [{ json: { scriptPath, scriptContent: content } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        304
+      ],
+      "id": "f8f69a00-4b43-4eee-98e1-950cfd6ad564",
+      "name": "📖 Read Script for Metadata"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs'), path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nconst scriptContent = $input.first().json.scriptContent || '';\n\nif (!scriptContent) throw new Error('scriptContent is empty');\n\nconst keyPath = path.join(dir, '.openai_key');\nif (!fs.existsSync(keyPath)) throw new Error('.openai_key not found');\nconst openaiKey = fs.readFileSync(keyPath, 'utf8').trim();\nif (!openaiKey.startsWith('sk-')) throw new Error('Invalid key in .openai_key');\n\nconst scriptPath = path.join(dir, '_meta_script_tmp.txt');\nfs.writeFileSync(scriptPath, scriptContent, 'utf8');\n\nconst generatorPath = path.join(dir, 'metadata_generator.py');\nif (!fs.existsSync(generatorPath)) throw new Error('metadata_generator.py not found');\n\nlet result = '', runError = '';\ntry {\n  result = execSync(\n    `python3 \"${generatorPath}\" \"${scriptPath}\" \"${openaiKey}\"`,\n    { encoding: 'utf8', timeout: 60000 }\n  );\n} catch(e) {\n  runError = e.stderr || e.message || '';\n  result   = e.stdout || '';\n} finally {\n  try { fs.unlinkSync(scriptPath); } catch(_) {}\n}\n\nlet meta = {};\ntry {\n  meta = JSON.parse(result.trim());\n} catch(_) {\n  throw new Error(`Parse failed.\\nstdout: ${result.slice(-400)}\\nstderr: ${runError.slice(-300)}`);\n}\n\nif (!meta.success) {\n  throw new Error(`Metadata generation failed: ${meta.error}\\n${meta.trace || ''}`);\n}\n\nreturn [{ json: {\n  title:       meta.title,\n  description: meta.description,\n  tags:        meta.tags,\n  tagString:   meta.tags.join(', '),\n  metaSuccess: true\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        304
+      ],
+      "id": "8695e8df-1380-4151-8b70-ef8b2f93b6fa",
+      "name": "🎬 Generate YouTube Metadata"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $input.first().json;\n\nif (!meta.title) throw new Error('Title is empty — metadata generation failed');\n\n// Truncate title to YouTube limit\nconst title = meta.title.slice(0, 100);\n\n// Tags: YouTube allows max 500 chars total\nconst tags = (meta.tags || []).slice(0, 20);\n\nreturn [{ json: {\n  title,\n  description: meta.description || '',\n  tags,\n  tagString:   tags.join(', '),\n  charCount: {\n    title:       title.length,\n    description: (meta.description || '').length,\n    tags:        JSON.stringify(tags).length\n  }\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        320
+      ],
+      "id": "ec1fb67a-9425-480e-a606-7c8fb97f4a0b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Script Generated Successfully!",
+        "completionMessage": "={{ $json.script }}",
+        "options": {}
+      },
+      "id": "4f8cd6c3-c44b-4730-bcd3-d4ca0ed84754",
+      "name": "📤 Form - Show Success",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        432,
+        -432
+      ],
+      "webhookId": "696f6db7-7090-4799-8582-6cb401552a09",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Script not generated",
+        "completionMessage": "There is some error and the script is not generated!",
+        "options": {}
+      },
+      "id": "21061f96-2fd3-4498-a9f0-1c2b54230e0e",
+      "name": "❌ Form - Show Error",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        -160,
+        -192
+      ],
+      "webhookId": "696f6db7-7090-4799-8582-6cb401552a09"
+    },
+    {
+      "parameters": {
+        "formTitle": "🎬 YouTube Script Generator",
+        "formDescription": "Generate a Hinglish YouTube script on any cybercrime topic",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Video Topic",
+              "placeholder": "e.g. Fake Bank Customer Care Number Fraud",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Duration",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "3-4 minutes"
+                  },
+                  {
+                    "option": "5-6 minutes"
+                  },
+                  {
+                    "option": "7-8 minutes"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "e8d9e900-1761-443a-beac-37f52e2b6a44",
+      "name": "📋 Form - Enter Topic1",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1232,
+        -320
+      ],
+      "webhookId": "66c12825-09ca-4f9d-9fd2-2f95d4b56057"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "asgn-topic-001",
+              "name": "topic",
+              "value": "={{ $json['Video Topic'] || 'UPI Fraud Awareness' }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-duration-001",
+              "name": "targetDuration",
+              "value": "={{ $json['Duration'] || '3-4 minutes' }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-lang-001",
+              "name": "language",
+              "value": "Hinglish",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d3d7598f-1118-48e9-ba5d-ba36ef450bff",
+      "name": "📌 Set - Extract Input Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -944,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-opus-4-6\",\n  \"max_tokens\": 4096,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are a world-class Hindi content writer and expert storyteller for YouTube educational videos, especially on cybercrime awareness. Create a highly engaging 3-4 minute Hindi script (in plain text, no formatting) for a YouTube video on the topic: {{ $json.topic }}.\\n\\nThe script must:\\n1. Be written in simple, conversational Hinglish (Hindi(Devnagri)70-80% Hindi in Devanagari script NOT Romanized Hindi, + English mix that common people understand)\\n2. Start with a powerful hook or shocking real statistic to grab attention in the first 10 seconds\\n3. Include a real-life relatable scenario (e.g., a middle-class family, a college student, a small shopkeeper being scammed)\\n4. Have a clear structure: HOOK → PROBLEM STATEMENT → REAL STORY/EXAMPLE → HOW THE SCAM WORKS (step by step) → WARNING SIGNS → SOLUTION & PREVENTION TIPS → CALL TO ACTION\\n5. End with a strong, emotional call to action (like, share, subscribe, and stay safe)\\n6. Include natural pauses, emotional beats, and energy shifts suitable for voice-over delivery\\n7. Be informative yet highly entertaining — NOT like a lecture, but like a friend warning you but using honourable language like आप, आपके, आपका etc.\\n8. Should be plain text\\n9. Include suggested TITLE and SUBTITLE for thumbnail generation at the very top in this format:\\n   TITLE: <short punchy title in Hindi (devnagri)/English, wherever required, max 4 words>\\n   SUBTITLE: <supporting line max 6 words>\\n10. Word count should be approximately 400-500 words for 3-4 minutes of speaking\\n\\nTopic: {{ $json.topic }}\\nTarget Duration: {{ $json.targetDuration }}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "643eaf1d-1708-4563-973e-06cdd1d1f4b4",
+      "name": "🤖 Claude API - Generate Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -736,
+        -320
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "qt0iPUrR8QcMiZMs",
+          "name": "Anthropic account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f89290f9-25b4-4a08-ad62-e3cb248372ab",
+              "leftValue": "={{ $json.content && $json.content.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "467c5445-8a5d-455b-b25f-05ae567c49e7",
+      "name": "✅ IF - API Success?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -416,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst rawScript = response.content[0].text;\n\nconst lines = rawScript.split('\\n');\nlet title = 'Cyber Fraud Alert';\nlet subtitle = 'Protect Yourself Now';\n\nfor (let i = 0; i < Math.min(5, lines.length); i++) {\n  const line = lines[i].trim();\n  if (line.startsWith('TITLE:')) title = line.replace('TITLE:', '').trim().replace(/^=+\\s*/, '');\n  if (line.startsWith('SUBTITLE:')) subtitle = line.replace('SUBTITLE:', '').trim();\n}\n\n// Remove TITLE: and SUBTITLE: lines\nconst cleanedScript = lines\n  .filter(line => !line.trim().startsWith('TITLE:') && !line.trim().startsWith('SUBTITLE:'))\n  .join('\\n')\n  .trimStart()\n  .replace(/^=+\\s*/gm, '');  // remove = at start of every line\n\n// Re-insert title and subtitle at top without the TITLE:/SUBTITLE: prefix\nconst finalScript = title + '\\n' + subtitle + '\\n\\n' + cleanedScript;\n\nlet topic = 'Unknown Topic';\ntry {\n  topic = $('📌 Set - Extract Input Params1').first().json.topic\n       || $('Set - Extract Input Params1').first().json.topic;\n} catch(e) {\n  topic = title || 'Unknown Topic';\n}\n\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);\nconst wordCount = finalScript.split(/\\s+/).length;\nconst estimatedMinutes = Math.round(wordCount / 130);\n\nreturn [{\n  json: {\n    script: finalScript,\n    topic: topic,\n    title: title,\n    subtitle: subtitle,\n    timestamp: timestamp,\n    wordCount: wordCount,\n    estimatedDuration: estimatedMinutes + ' minutes',\n    filename: 'script.md',\n    fullPath: '/Users/ramdudeja/Desktop/Hindi-video-generator/script.md'\n  }\n}];"
+      },
+      "id": "433acf8c-f6da-478b-98ea-a0efcdc48ea3",
+      "name": "⚙️ Code - Parse Script & Extract Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst script = $input.first().json.script;\nconst targetPath = '/Users/ramdudeja/Desktop/bankingexpertram/script.md';\n\nfs.mkdirSync(path.dirname(targetPath), { recursive: true });\nfs.writeFileSync(targetPath, script, 'utf8');\n\nconst fileSize = fs.statSync(targetPath).size;\n\nreturn [{\n  json: {\n    stdout: JSON.stringify({\n      saved: true,\n      path: targetPath,\n      size_bytes: fileSize\n    })\n  }\n}];"
+      },
+      "id": "af5ef40f-dde7-4ecc-94ad-d9e50985bb55",
+      "name": "💾 Execute - Save script.md",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "asgn-savestatus-001",
+              "name": "saveStatus",
+              "value": "={{ JSON.parse($json.stdout).saved ? 'saved' : 'failed' }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-savepath-001",
+              "name": "savedPath",
+              "value": "={{ JSON.parse($json.stdout).path }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-script-fwd-001",
+              "name": "script",
+              "value": "={{ $('⚙️ Code - Parse Script & Extract Metadata').first().json.script }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-title-fwd-001",
+              "name": "title",
+              "value": "={{ $('⚙️ Code - Parse Script & Extract Metadata').first().json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-subtitle-fwd-001",
+              "name": "subtitle",
+              "value": "={{ $('⚙️ Code - Parse Script & Extract Metadata').first().json.subtitle }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-wordcount-fwd-001",
+              "name": "wordCount",
+              "value": "={{ $('⚙️ Code - Parse Script & Extract Metadata').first().json.wordCount }}",
+              "type": "number"
+            },
+            {
+              "id": "asgn-duration-fwd-001",
+              "name": "estimatedDuration",
+              "value": "={{ $('⚙️ Code - Parse Script & Extract Metadata').first().json.estimatedDuration }}",
+              "type": "string"
+            },
+            {
+              "id": "asgn-topic-fwd-001",
+              "name": "topic",
+              "value": "={{ $('⚙️ Code - Parse Script & Extract Metadata').first().json.topic }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7a711b78-5cdb-4eaf-80f4-0f90538e3996",
+      "name": "📦 Set - Prepare Final Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "04b1bfc5-9191-42d4-91ef-3e9422c08044",
+      "name": "⏰ Daily Schedule (7AM IST)2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1248,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\n\n// Always use output_v19/final_video.mp4 as the primary target\nconst primaryPath = path.join(dir, 'output_v19', 'final_video.mp4');\nlet videoPath = fs.existsSync(primaryPath) ? primaryPath : null;\n\n// Fallback: scan subdirectories only if primary not found\nif (!videoPath) {\n  const entries = fs.readdirSync(dir)\n    .filter(e => fs.statSync(path.join(dir, e)).isDirectory())\n    .sort().reverse();\n  outer: for (const sub of entries) {\n    for (const name of ['final_video.mp4', 'output_video.mp4', 'video.mp4']) {\n      const fp = path.join(dir, sub, name);\n      if (fs.existsSync(fp)) { videoPath = fp; break outer; }\n    }\n  }\n}\n\nif (!videoPath) throw new Error(`No video file found. Expected: ${primaryPath}`);\n\nconst metaPath = path.join(dir, 'pipeline_meta.json');\nif (!fs.existsSync(metaPath)) throw new Error(`pipeline_meta.json not found at ${metaPath}`);\n\nconst meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));\nif (!meta.title) throw new Error('title missing in pipeline_meta.json');\n\nconst videoSizeMb = Math.round(fs.statSync(videoPath).size / (1024 * 1024) * 10) / 10;\nconsole.log(`✅ Video found: ${videoPath} (${videoSizeMb} MB)`);\nconsole.log(`✅ Title: ${meta.title}`);\n\nreturn [{ json: {\n  videoPath,\n  videoSizeMb,\n  youtubeTitle:       meta.title,\n  youtubeDescription: meta.description || '',\n  youtubeTags:        meta.tags || []\n} }];"
+      },
+      "id": "32876b21-3ff7-4dcb-a784-5e25ce63ffb0",
+      "name": "📂 Find Video & Load Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('📂 Find Video & Load Metadata').first().json.youtubeTitle }}",
+        "regionCode": "IN",
+        "categoryId": "22",
+        "options": {
+          "defaultLanguage": "hi",
+          "privacyStatus": "public",
+          "selfDeclaredMadeForKids": false,
+          "description": "={{ $('📂 Find Video & Load Metadata').first().json.youtubeDescription }}",
+          "tags": "={{ $('📂 Find Video & Load Metadata').first().json.youtubeTags.join(',') }}"
+        }
+      },
+      "id": "fa8aea34-a7d1-4ede-9e6e-6018fd3d893c",
+      "name": "📤 YouTube: Upload Video",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        608
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "B7A7hz5Qv3i74xVU",
+          "name": "YouTube Ram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\n\nconst ytResponse = $('📤 YouTube: Upload Video').first().json;\nconst videoId = ytResponse.uploadId\n  || ytResponse.id\n  || ytResponse.videoId\n  || ytResponse.snippet?.resourceId?.videoId\n  || ytResponse.contentDetails?.videoId\n  || null;\n\nif (!videoId) throw new Error(\n  `videoId not found. YouTube response keys: ${Object.keys(ytResponse).join(', ')}`\n);\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nconst thumbnailPath = path.join(dir, 'images', 'image0.jpeg');\n\nif (!fs.existsSync(thumbnailPath)) throw new Error(`Thumbnail not found: ${thumbnailPath}`);\n\nreturn [{ json: { videoId, thumbnailPath } }];"
+      },
+      "id": "41576bdd-4f20-45f9-9993-f8c636099930",
+      "name": "📂 Read Thumbnail Path1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst thumbnailPath = $input.first().json.thumbnailPath;\nconst videoId = $input.first().json.videoId;\n\nif (!fs.existsSync(thumbnailPath)) throw new Error(`Thumbnail not found: ${thumbnailPath}`);\n\nconst buffer = fs.readFileSync(thumbnailPath);\nconst base64 = buffer.toString('base64');\n\nreturn [{\n  json: { videoId, thumbnailPath },\n  binary: {\n    data: {\n      data: base64,\n      mimeType: 'image/jpeg',\n      fileName: 'image0.jpeg'\n    }\n  }\n}];"
+      },
+      "id": "544eb4c2-dced-4351-b524-793c87129f5a",
+      "name": "📂 Read image0.jpeg as Binary1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $('📂 Read Thumbnail Path1').first().json.videoId }}&uploadType=media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "61beb156-826e-4ab3-9710-561f662b2914",
+      "name": "🖼️ YouTube: Set Thumbnail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -208,
+        608
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "B7A7hz5Qv3i74xVU",
+          "name": "YouTube Ram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\n\n// FIX: Take only the first path if env var contains comma-separated values\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\n\nconst videoId = $('📤 YouTube: Upload Video').first().json.id || 'unknown';\nconst title   = $('📂 Find Video & Load Metadata').first().json.youtubeTitle || 'unknown';\n\nconst log = {\n  timestamp: new Date().toISOString(),\n  workflow:  'bankingexpertram',\n  status:    'SUCCESS',\n  stage:     'youtube_upload',\n  videoId,\n  title,\n  videoUrl:  `https://youtube.com/watch?v=${videoId}`\n};\n\nfs.appendFileSync(path.join(dir, 'pipeline_log.jsonl'), JSON.stringify(log) + '\\n');\nconsole.log(`✅ Video published: ${log.videoUrl}`);\nreturn [{ json: log }];"
+      },
+      "id": "6f0dd2c4-4aed-4935-8c73-f12d1cb74dae",
+      "name": "✅ Log: Pipeline Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\n\nconst meta = {\n  title:       $input.first().json.title,\n  description: $input.first().json.description,\n  tags:        $input.first().json.tags\n};\n\nif (!meta.title) throw new Error('title is empty — cannot save pipeline_meta.json');\n\nconst metaPath = path.join(dir, 'pipeline_meta.json');\nfs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8');\nconsole.log(`✅ pipeline_meta.json saved: ${metaPath}`);\nconsole.log(`   Title: ${meta.title}`);\nconsole.log(`   Tags: ${meta.tags.length} tags`);\n\nreturn [{ json: { ...meta, metaSaved: true, metaPath } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        320
+      ],
+      "id": "775ae0b3-4fa1-4ea1-8cef-f85f02375a91",
+      "name": "💾 Save pipeline_meta.json"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst videoPath = $('📂 Find Video & Load Metadata').first().json.videoPath;\n\nconst buffer = fs.readFileSync(videoPath);\nconst base64 = buffer.toString('base64');\n\nreturn [{\n  json: {\n    videoPath,\n    mimeType: 'video/mp4'\n  },\n  binary: {\n    data: {\n      data: base64,\n      mimeType: 'video/mp4',\n      fileName: videoPath.split('/').pop(),\n      fileExtension: 'mp4'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        608
+      ],
+      "id": "17883cd9-1243-4aee-a999-def894f0f98c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path'), https = require('https');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded working directory ───────────────────────────────────────────────\nconst dir     = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst imgsDir = path.join(dir, 'images');\nif (!fs.existsSync(imgsDir)) fs.mkdirSync(imgsDir, { recursive: true });\n\n// ── Read API key ──────────────────────────────────────────────────────────────\nconst keyPath = path.join(dir, '.openai_key');\nif (!fs.existsSync(keyPath)) throw new Error(`OpenAI key not found at: ${keyPath}`);\nconst apiKey = fs.readFileSync(keyPath, 'utf8').trim();\nif (!apiKey.startsWith('sk-')) throw new Error(`Invalid API key in ${keyPath}`);\n\n// ── Compression settings ──────────────────────────────────────────────────────\nconst JPEG_QUALITY = 82;\nconst MAX_WIDTH    = 1280;\nconst CONVERT_WEBP = false;\n\n// ── Helper: compress image ────────────────────────────────────────────────────\nfunction compressImage(inputPath, quality, maxWidth, toWebp) {\n  const outputPath = toWebp ? inputPath.replace(/\\.jpeg$/, '.webp') : inputPath;\n  const pyCode = `\nfrom PIL import Image\nimport sys, os\ninp = sys.argv[1]; out = sys.argv[2]; q = int(sys.argv[3]); mw = int(sys.argv[4])\nimg = Image.open(inp)\nif img.width > mw:\n    img = img.resize((mw, int(img.height * (mw / img.width))), Image.LANCZOS)\nif img.mode in ('RGBA', 'P'): img = img.convert('RGB')\nfmt = 'WEBP' if out.endswith('.webp') else 'JPEG'\nimg.save(out, fmt, quality=q, optimize=True)\nbefore = os.path.getsize(inp); after = os.path.getsize(out)\nprint(f\"{before},{after}\")\n`;\n  const pyPath = path.join(dir, '_compress_tmp.py');\n  fs.writeFileSync(pyPath, pyCode, 'utf8');\n  let output = '';\n  try {\n    output = execSync(\n      `python3 \"${pyPath}\" \"${inputPath}\" \"${outputPath}\" \"${quality}\" \"${maxWidth}\"`,\n      { encoding: 'utf8', timeout: 30000 }\n    );\n  } finally { try { fs.unlinkSync(pyPath); } catch(_) {} }\n  if (toWebp && outputPath !== inputPath && fs.existsSync(outputPath)) {\n    try { fs.unlinkSync(inputPath); } catch(_) {}\n  }\n  const [before, after] = output.trim().split(',').map(Number);\n  return {\n    finalPath:    outputPath,\n    beforeKb:     Math.round(before / 1024),\n    afterKb:      Math.round(after  / 1024),\n    savedKb:      Math.round((before - after) / 1024),\n    savedPercent: Math.round((1 - after / before) * 100)\n  };\n}\n\n// ── Helper: generate image via DALL-E and save ────────────────────────────────\nasync function generateAndSave(prompt, filepath) {\n  const body = JSON.stringify({\n    model: 'dall-e-3', prompt, n: 1,\n    size: '1792x1024', quality: 'standard', response_format: 'url'\n  });\n  const imageUrl = await new Promise((resolve, reject) => {\n    const req = https.request({\n      hostname: 'api.openai.com',\n      path: '/v1/images/generations',\n      method: 'POST',\n      headers: {\n        'Content-Type':   'application/json',\n        'Authorization':  `Bearer ${apiKey}`,\n        'Content-Length': Buffer.byteLength(body)\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', chunk => data += chunk);\n      res.on('end', () => {\n        try {\n          const parsed = JSON.parse(data);\n          if (parsed.error) reject(new Error('DALL-E error: ' + parsed.error.message));\n          else resolve(parsed.data[0].url);\n        } catch(e) {\n          reject(new Error('DALL-E parse error: ' + data.slice(0, 200)));\n        }\n      });\n    });\n    req.on('error', reject);\n    req.write(body);\n    req.end();\n  });\n\n  await new Promise((resolve, reject) => {\n    const file = fs.createWriteStream(filepath);\n    https.get(imageUrl, (res) => {\n      res.pipe(file);\n      file.on('finish', () => { file.close(); resolve(); });\n    }).on('error', (err) => { fs.unlink(filepath, () => {}); reject(err); });\n  });\n\n  const compression = compressImage(filepath, JPEG_QUALITY, MAX_WIDTH, CONVERT_WEBP);\n  console.log(`   📦 ${path.basename(filepath)}: ${compression.beforeKb}KB → ${compression.afterKb}KB (saved ${compression.savedPercent}%)`);\n  return compression;\n}\n\n// ── Read title & subtitle from script.md ─────────────────────────────────────\nconst scriptPath = path.join(dir, 'script.md');\nlet title    = 'Cyber Fraud Alert';\nlet subtitle = 'Apne aap ko bachao';\nif (fs.existsSync(scriptPath)) {\n  const lines = fs.readFileSync(scriptPath, 'utf8')\n                  .split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n  if (lines[0]) title    = lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim();\n  if (lines[1]) subtitle = lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim();\n}\n\n// ── Step 1: Generate image0.jpeg as DALL-E thumbnail ─────────────────────────\nconst thumbnailPrompt = `YouTube thumbnail image for a Hindi cyber fraud awareness video titled \"${title}\". \nA shocked and worried middle-aged Indian woman in a saree sitting in a bright Indian living room, \nholding a smartphone with a horrified expression, warm afternoon sunlight coming through a window, \nultra realistic photographic style, eye-level shot, shallow depth of field, \nno text or screens visible, conveys urgency and alert — styled for Indian YouTube audience.`;\n\nconst image0Path = path.join(imgsDir, 'image0.jpeg');\nconsole.log(`⏳ Generating image0.jpeg (DALL-E thumbnail)...`);\nconst thumbResult = await generateAndSave(thumbnailPrompt, image0Path);\nconsole.log(`✅ image0.jpeg done — ${thumbResult.afterKb} KB`);\n\n// ── Step 2: Generate image1, image2 ... via DALL-E ───────────────────────────\nconst items   = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const { prompt, filename, news_index, headline, variant, is_thumbnail } = item.json;\n\n  const finalFilename = CONVERT_WEBP ? filename.replace(/\\.jpeg$/, '.webp') : filename;\n  const filepath      = path.join(imgsDir, filename);\n\n  console.log(`⏳ Generating ${finalFilename}...`);\n  const compression = await generateAndSave(prompt, filepath);\n  console.log(`✅ ${finalFilename} done — ${compression.afterKb} KB`);\n\n  results.push({\n    json: {\n      filename:    finalFilename,\n      filepath:    compression.finalPath,\n      news_index,\n      headline,\n      variant,\n      is_thumbnail,\n      size_kb:     compression.afterKb,\n      original_kb: compression.beforeKb,\n      saved_kb:    compression.savedKb,\n      saved_pct:   compression.savedPercent,\n      thumbnail: {\n        generated: true,\n        path:      thumbResult.finalPath,\n        size_kb:   thumbResult.afterKb,\n        title,\n        subtitle\n      }\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "78b01335-ba18-4128-9c17-032696de9c42",
+      "name": "💾 Save Image to Disk1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        64
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🐍 Run: script_to_excel.py": {
+      "main": [
+        [
+          {
+            "node": "✅ Check Excel Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Check Excel Created": {
+      "main": [
+        []
+      ]
+    },
+    "🐍 Run: excel_to_video.py": {
+      "main": [
+        [
+          {
+            "node": "🎬 Run: generate_video_different_images.py",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎬 Run: generate_video_different_images.py": {
+      "main": [
+        [
+          {
+            "node": "🔍 Check Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "📂 Find Video & Load Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Load script.md from Disk1": {
+      "main": [
+        [
+          {
+            "node": "🎨 OpenAI: Generate Image Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎨 OpenAI: Generate Image Prompts1": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Parse & Flatten Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Parse & Flatten Prompts1": {
+      "main": [
+        [
+          {
+            "node": "💾 Save Image to Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Daily Schedule (7AM IST)1": {
+      "main": [
+        [
+          {
+            "node": "📖 Load script.md from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Check Video Output": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Script for Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Script for Metadata": {
+      "main": [
+        [
+          {
+            "node": "🎬 Generate YouTube Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎬 Generate YouTube Metadata": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "💾 Save pipeline_meta.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Form - Enter Topic1": {
+      "main": [
+        [
+          {
+            "node": "📌 Set - Extract Input Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📌 Set - Extract Input Params": {
+      "main": [
+        [
+          {
+            "node": "🤖 Claude API - Generate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Claude API - Generate Script": {
+      "main": [
+        [
+          {
+            "node": "✅ IF - API Success?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ IF - API Success?1": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Code - Parse Script & Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Form - Show Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Code - Parse Script & Extract Metadata": {
+      "main": [
+        [
+          {
+            "node": "💾 Execute - Save script.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Execute - Save script.md": {
+      "main": [
+        [
+          {
+            "node": "📦 Set - Prepare Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Set - Prepare Final Output": {
+      "main": [
+        [
+          {
+            "node": "📤 Form - Show Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Daily Schedule (7AM IST)2": {
+      "main": [
+        [
+          {
+            "node": "🐍 Run: excel_to_video.py",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📂 Find Video & Load Metadata": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 YouTube: Upload Video": {
+      "main": [
+        [
+          {
+            "node": "📂 Read Thumbnail Path1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📂 Read Thumbnail Path1": {
+      "main": [
+        [
+          {
+            "node": "📂 Read image0.jpeg as Binary1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📂 Read image0.jpeg as Binary1": {
+      "main": [
+        [
+          {
+            "node": "🖼️ YouTube: Set Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🖼️ YouTube: Set Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "✅ Log: Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save pipeline_meta.json": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "📤 YouTube: Upload Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save Image to Disk1": {
+      "main": [
+        [
+          {
+            "node": "🐍 Run: script_to_excel.py",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "86c7f71a-eb44-4ca2-b549-af1d94124094",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c0bf29310e1e28c20b170e842a09c3302c78d05f4d68fb0c213f047fe22fc555"
+  },
+  "id": "QtzMWbsdwUOaUbWA",
+  "tags": []
+}
