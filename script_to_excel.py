@@ -37,8 +37,7 @@ CLR_BORDER     = "B8CCE4"
 CLR_HELP_BG    = "E2EFDA"
 CLR_HELP_FG    = "375623"
 
-NUM_IMAGES     = 10                                              # image0 … image9
-DROPDOWN_STR   = ",".join(str(i) for i in range(NUM_IMAGES))          # "0,1,2,3,4,5,6,7,8,9"
+NUM_IMAGES     = 10                                              # fallback; overridden dynamically in build_excel
 
 
 def thin_border(color=CLR_BORDER):
@@ -94,6 +93,12 @@ def parse_paragraphs(filepath: str) -> list[dict]:
 # ── Excel builder ──────────────────────────────────────────────────────────────
 
 def build_excel(sections: list[dict], output_path: str):
+    n        = len(sections)
+    # image0…image(n-2) are unique; last para reuses image0 → n-1 distinct images
+    n_imgs   = max(n - 1, 1)
+    max_img  = n_imgs - 1
+    dropdown_str = ",".join(str(i) for i in range(n_imgs))
+
     wb = Workbook()
 
     # ── Sheet 1 : Script Editor ────────────────────────────────────────────────
@@ -113,10 +118,10 @@ def build_excel(sections: list[dict], output_path: str):
     ws.merge_cells("A2:D2")
     c = ws["A2"]
     c.value = (
-        "Col A: Edit script text freely.   "
-        "Col B: Select image number 0–9  "
-        "(0=image0, 9=image9).   "
-        "⚠ All rows must be filled before running excel_to_video.py."
+        f"Col A: Edit script text freely.   "
+        f"Col B: Image number auto-assigned (0=image0 … {max_img}=image{max_img}).   "
+        f"First & last para share image0.   "
+        f"Override any row via the ▼ dropdown before running excel_to_video.py."
     )
     c.font      = Font(name="Arial", italic=True, size=9, color=CLR_HELP_FG)
     c.fill      = PatternFill("solid", fgColor=CLR_HELP_BG)
@@ -124,7 +129,7 @@ def build_excel(sections: list[dict], output_path: str):
     ws.row_dimensions[2].height = 28
 
     # Row 3 – column headers
-    headers   = ["Script Text (Editable)", "Image No.  ▼ (0–9)", "Para #", "Section Title / Notes"]
+    headers   = ["Script Text (Editable)", f"Image No.  ▼ (0–{max_img})", "Para #", "Section Title / Notes"]
     hdr_fills = [CLR_ACCENT, CLR_IMG_HEADER, CLR_ACCENT, CLR_ACCENT]
     for col_i, (hdr, bg) in enumerate(zip(headers, hdr_fills), 1):
         cell = ws.cell(row=3, column=col_i, value=hdr)
@@ -137,12 +142,12 @@ def build_excel(sections: list[dict], output_path: str):
     # Dropdown validation : allow_blank=True so cells start empty without error
     dv = DataValidation(
         type="list",
-        formula1=f'"{DROPDOWN_STR}"',
+        formula1=f'"{dropdown_str}"',
         allow_blank=True,
-        showDropDown=False,         # False = show the ▼ arrow in Excel
+        showDropDown=False,
         showErrorMessage=True,
         errorTitle="Invalid selection",
-        error="Please choose a number between 0 and 9.",
+        error=f"Please choose a number between 0 and {max_img}.",
     )
     ws.add_data_validation(dv)
 
@@ -158,10 +163,11 @@ def build_excel(sections: list[dict], output_path: str):
         a.alignment = Alignment(wrap_text=True, vertical="top")
         a.border    = thin_border()
 
-        # Col B – image slot: intentionally BLANK, orange tint = needs filling
-        b = ws.cell(row=row, column=2, value=None)
+        # Col B – para_idx maps 1:1 to image number; last para wraps back to image0
+        auto_img = para_idx if para_idx < n - 1 else 0
+        b = ws.cell(row=row, column=2, value=auto_img)
         b.font      = Font(name="Arial", bold=True, size=12, color="7F3F00")
-        b.fill      = PatternFill("solid", fgColor=CLR_IMG_BLANK)
+        b.fill      = PatternFill("solid", fgColor=CLR_IMG_FILLED)
         b.alignment = Alignment(horizontal="center", vertical="center")
         b.border    = thin_border("BF8F00")
         dv.add(b)
@@ -209,7 +215,7 @@ def build_excel(sections: list[dict], output_path: str):
         cell.fill = PatternFill("solid", fgColor=CLR_ACCENT)
         cell.alignment = Alignment(horizontal="center")
 
-    for img_num in range(NUM_IMAGES):
+    for img_num in range(n_imgs):
         r = img_num + 3
         ws2.cell(row=r, column=1, value=img_num)
         ws2.cell(row=r, column=2, value=f"image{img_num}.jpeg")
@@ -306,14 +312,15 @@ OTP यानी One Time Password एक सुरक्षा कोड हो
 
     build_excel(sections, args.out)
 
+    n = len(sections)
     print(f"  ✅  Excel created : {args.out}")
-    print(f"      Paragraphs    : {len(sections)}")
-    print(f"      Image numbers : 0–9  (image0.jpeg … image9.jpeg)")
-    print(f"      Col B         : blank — select a number for every row")
+    print(f"      Paragraphs    : {n}")
+    print(f"      Image numbers : 0–{n-2}  (image0.jpeg … image{n-2}.jpeg, last para → image0)")
+    print(f"      Col B         : auto-assigned para_idx → image_idx, last para = image0")
     print()
     print("  Next steps:")
     print(f"    1. Open {args.out}")
-    print("    2. Edit Col A text,  pick image number (0–9) in Col B for every row")
+    print(f"    2. Edit Col A text, override image number (0–{n-2}) in Col B if needed")
     print("    3. Save the file")
     print(f"    4. Run:  python3 excel_to_video.py --excel {args.out}")
     print("=" * 60)
