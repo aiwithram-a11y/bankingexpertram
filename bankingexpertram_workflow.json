@@ -101,11 +101,11 @@
         "messages": {
           "values": [
             {
-              "content": "You generate image prompts for a Hindi YouTube cybersecurity awareness channel.",
+              "content": "You generate DALL-E 3 image prompts for a Hindi YouTube cybersecurity awareness channel. All characters must look visually Hindu Indian. Women wear sari or salwar kameez with bindi on forehead — never hijab or Islamic head covering. Men wear kurta-pyjama or casual Indian clothes — no skull cap. Images must be ultra-realistic photographic quality with ABSOLUTELY NO text, NO speech bubbles, NO captions, NO writing of any kind anywhere in the image.",
               "role": "system"
             },
             {
-              "content": "=Generate exactly {{ $json.imagesNeeded }} image prompts, one per numbered paragraph below.\n\nFor each paragraph, create a prompt for a comic-strip style image with 4-6 panels that tells the story of that paragraph — like the images ChatGPT generates when you paste a Hindi script and ask for a visual story. Show Indian characters (middle-class, everyday people), include Hindi dialog text in speech bubbles or captions on the panels, and make it look like a visual news story.\n\nReturn ONLY a valid JSON array, no markdown:\n[\n  {\n    \"newsIndex\": 1,\n    \"headline\": \"short topic\",\n    \"prompt\": \"image prompt here\"\n  }\n]\n\nParagraphs:\n{{ $json.numberedParagraphs }}"
+              "content": "=Generate exactly {{ $json.imagesNeeded }} image prompts, one per numbered paragraph below.\n\nFor each paragraph, create a DALL-E 3 prompt for a 2-panel photorealistic diptych (two side-by-side scenes separated by a thin black border, widescreen 16:9) that visually tells the key emotional moment of that paragraph.\n\nSTRICT CHARACTER RULES — every character must look visually Hindu Indian:\n- Women: sari or salwar kameez, bindi on forehead, bangles — NO hijab, NO dupatta covering head, NO Islamic dress\n- Men: kurta-pyjama or casual Indian clothes, optional tilak — NO skull cap, NO taqiyah\n- Elderly: white kurta-dhoti or kurta-pyjama\n- Middle-class Indian appearance throughout\n\nSTRICT NO-TEXT RULES — this is the most important rule:\n- ZERO text anywhere — no speech bubbles, no captions, no labels, no Hindi, no English, no numbers\n- Pure visual storytelling through expressions, gestures, body language, and environment\n\nSTYLE: Ultra-realistic cinematic photography quality — dramatic lighting, shallow depth of field, warm Indian home/street/office environments, highly expressive faces conveying emotion, professional photo-journalism level realism. Two panels side by side with thin black divider, each panel tells one moment of the story.\n\nReturn ONLY a valid JSON array, no markdown:\n[\n  {\n    \"newsIndex\": 1,\n    \"headline\": \"short topic\",\n    \"prompt\": \"image prompt here\"\n  }\n]\n\nParagraphs:\n{{ $json.numberedParagraphs }}"
             }
           ]
         },
@@ -632,7 +632,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs'), path = require('path'), https = require('https');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded working directory ───────────────────────────────────────────────\nconst dir     = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst imgsDir = path.join(dir, 'images');\nif (!fs.existsSync(imgsDir)) fs.mkdirSync(imgsDir, { recursive: true });\n\n// ── Read API key ──────────────────────────────────────────────────────────────\nconst keyPath = path.join(dir, '.openai_key');\nif (!fs.existsSync(keyPath)) throw new Error(`OpenAI key not found at: ${keyPath}`);\nconst apiKey = fs.readFileSync(keyPath, 'utf8').trim();\nif (!apiKey.startsWith('sk-')) throw new Error(`Invalid API key in ${keyPath}`);\n\n// ── Compression settings ──────────────────────────────────────────────────────\nconst JPEG_QUALITY = 82;\nconst MAX_WIDTH    = 1280;\nconst CONVERT_WEBP = false;\n\n// ── Helper: compress image ────────────────────────────────────────────────────\nfunction compressImage(inputPath, quality, maxWidth, toWebp) {\n  const outputPath = toWebp ? inputPath.replace(/\\.jpeg$/, '.webp') : inputPath;\n  const pyCode = `\nfrom PIL import Image\nimport sys, os\ninp = sys.argv[1]; out = sys.argv[2]; q = int(sys.argv[3]); mw = int(sys.argv[4])\nimg = Image.open(inp)\nif img.width > mw:\n    img = img.resize((mw, int(img.height * (mw / img.width))), Image.LANCZOS)\nif img.mode in ('RGBA', 'P'): img = img.convert('RGB')\nfmt = 'WEBP' if out.endswith('.webp') else 'JPEG'\nimg.save(out, fmt, quality=q, optimize=True)\nbefore = os.path.getsize(inp); after = os.path.getsize(out)\nprint(f\"{before},{after}\")\n`;\n  const pyPath = path.join(dir, '_compress_tmp.py');\n  fs.writeFileSync(pyPath, pyCode, 'utf8');\n  let output = '';\n  try {\n    output = execSync(\n      `python3 \"${pyPath}\" \"${inputPath}\" \"${outputPath}\" \"${quality}\" \"${maxWidth}\"`,\n      { encoding: 'utf8', timeout: 30000 }\n    );\n  } finally { try { fs.unlinkSync(pyPath); } catch(_) {} }\n  if (toWebp && outputPath !== inputPath && fs.existsSync(outputPath)) {\n    try { fs.unlinkSync(inputPath); } catch(_) {}\n  }\n  const [before, after] = output.trim().split(',').map(Number);\n  return {\n    finalPath:    outputPath,\n    beforeKb:     Math.round(before / 1024),\n    afterKb:      Math.round(after  / 1024),\n    savedKb:      Math.round((before - after) / 1024),\n    savedPercent: Math.round((1 - after / before) * 100)\n  };\n}\n\n// ── Helper: generate image via DALL-E and save ────────────────────────────────\nasync function generateAndSave(prompt, filepath) {\n  const body = JSON.stringify({\n    model: 'dall-e-3', prompt, n: 1,\n    size: '1792x1024', quality: 'standard', response_format: 'url'\n  });\n  const imageUrl = await new Promise((resolve, reject) => {\n    const req = https.request({\n      hostname: 'api.openai.com',\n      path: '/v1/images/generations',\n      method: 'POST',\n      headers: {\n        'Content-Type':   'application/json',\n        'Authorization':  `Bearer ${apiKey}`,\n        'Content-Length': Buffer.byteLength(body)\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', chunk => data += chunk);\n      res.on('end', () => {\n        try {\n          const parsed = JSON.parse(data);\n          if (parsed.error) reject(new Error('DALL-E error: ' + parsed.error.message));\n          else resolve(parsed.data[0].url);\n        } catch(e) {\n          reject(new Error('DALL-E parse error: ' + data.slice(0, 200)));\n        }\n      });\n    });\n    req.on('error', reject);\n    req.write(body);\n    req.end();\n  });\n\n  await new Promise((resolve, reject) => {\n    const file = fs.createWriteStream(filepath);\n    https.get(imageUrl, (res) => {\n      res.pipe(file);\n      file.on('finish', () => { file.close(); resolve(); });\n    }).on('error', (err) => { fs.unlink(filepath, () => {}); reject(err); });\n  });\n\n  const compression = compressImage(filepath, JPEG_QUALITY, MAX_WIDTH, CONVERT_WEBP);\n  console.log(`   📦 ${path.basename(filepath)}: ${compression.beforeKb}KB → ${compression.afterKb}KB (saved ${compression.savedPercent}%)`);\n  return compression;\n}\n\n// ── Read title & subtitle from script.md ─────────────────────────────────────\nconst scriptPath = path.join(dir, 'script.md');\nlet title    = 'Cyber Fraud Alert';\nlet subtitle = 'Apne aap ko bachao';\nif (fs.existsSync(scriptPath)) {\n  const lines = fs.readFileSync(scriptPath, 'utf8')\n                  .split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n  if (lines[0]) title    = lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim();\n  if (lines[1]) subtitle = lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim();\n}\n\n// ── Step 1: Generate image0.jpeg as DALL-E thumbnail ─────────────────────────\nconst thumbnailPrompt = `YouTube thumbnail image for a Hindi cyber fraud awareness video titled \"${title}\". \nA shocked and worried middle-aged Indian woman in a saree sitting in a bright Indian living room, \nholding a smartphone with a horrified expression, warm afternoon sunlight coming through a window, \nultra realistic photographic style, eye-level shot, shallow depth of field, \nno text or screens visible, conveys urgency and alert — styled for Indian YouTube audience.`;\n\nconst image0Path = path.join(imgsDir, 'image0.jpeg');\nconsole.log(`⏳ Generating image0.jpeg (DALL-E thumbnail)...`);\nconst thumbResult = await generateAndSave(thumbnailPrompt, image0Path);\nconsole.log(`✅ image0.jpeg done — ${thumbResult.afterKb} KB`);\n\n// ── Step 2: Generate image1, image2 ... via DALL-E ───────────────────────────\nconst items   = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const { prompt, filename, news_index, headline, variant, is_thumbnail } = item.json;\n\n  const finalFilename = CONVERT_WEBP ? filename.replace(/\\.jpeg$/, '.webp') : filename;\n  const filepath      = path.join(imgsDir, filename);\n\n  console.log(`⏳ Generating ${finalFilename}...`);\n  const compression = await generateAndSave(prompt, filepath);\n  console.log(`✅ ${finalFilename} done — ${compression.afterKb} KB`);\n\n  results.push({\n    json: {\n      filename:    finalFilename,\n      filepath:    compression.finalPath,\n      news_index,\n      headline,\n      variant,\n      is_thumbnail,\n      size_kb:     compression.afterKb,\n      original_kb: compression.beforeKb,\n      saved_kb:    compression.savedKb,\n      saved_pct:   compression.savedPercent,\n      thumbnail: {\n        generated: true,\n        path:      thumbResult.finalPath,\n        size_kb:   thumbResult.afterKb,\n        title,\n        subtitle\n      }\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "const fs = require('fs'), path = require('path'), https = require('https');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded working directory ───────────────────────────────────────────────\nconst dir     = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst imgsDir = path.join(dir, 'images');\nif (!fs.existsSync(imgsDir)) fs.mkdirSync(imgsDir, { recursive: true });\n\n// ── Read API key ──────────────────────────────────────────────────────────────\nconst keyPath = path.join(dir, '.openai_key');\nif (!fs.existsSync(keyPath)) throw new Error(`OpenAI key not found at: ${keyPath}`);\nconst apiKey = fs.readFileSync(keyPath, 'utf8').trim();\nif (!apiKey.startsWith('sk-')) throw new Error(`Invalid API key in ${keyPath}`);\n\n// ── Compression settings ──────────────────────────────────────────────────────\nconst JPEG_QUALITY = 92;\nconst MAX_WIDTH    = 1792;\nconst CONVERT_WEBP = false;\n\n// ── Helper: compress image ────────────────────────────────────────────────────\nfunction compressImage(inputPath, quality, maxWidth, toWebp) {\n  const outputPath = toWebp ? inputPath.replace(/\\.jpeg$/, '.webp') : inputPath;\n  const pyCode = `\nfrom PIL import Image\nimport sys, os\ninp = sys.argv[1]; out = sys.argv[2]; q = int(sys.argv[3]); mw = int(sys.argv[4])\nimg = Image.open(inp)\nif img.width > mw:\n    img = img.resize((mw, int(img.height * (mw / img.width))), Image.LANCZOS)\nif img.mode in ('RGBA', 'P'): img = img.convert('RGB')\nfmt = 'WEBP' if out.endswith('.webp') else 'JPEG'\nimg.save(out, fmt, quality=q, optimize=True)\nbefore = os.path.getsize(inp); after = os.path.getsize(out)\nprint(f\"{before},{after}\")\n`;\n  const pyPath = path.join(dir, '_compress_tmp.py');\n  fs.writeFileSync(pyPath, pyCode, 'utf8');\n  let output = '';\n  try {\n    output = execSync(\n      `python3 \"${pyPath}\" \"${inputPath}\" \"${outputPath}\" \"${quality}\" \"${maxWidth}\"`,\n      { encoding: 'utf8', timeout: 30000 }\n    );\n  } finally { try { fs.unlinkSync(pyPath); } catch(_) {} }\n  if (toWebp && outputPath !== inputPath && fs.existsSync(outputPath)) {\n    try { fs.unlinkSync(inputPath); } catch(_) {}\n  }\n  const [before, after] = output.trim().split(',').map(Number);\n  return {\n    finalPath:    outputPath,\n    beforeKb:     Math.round(before / 1024),\n    afterKb:      Math.round(after  / 1024),\n    savedKb:      Math.round((before - after) / 1024),\n    savedPercent: Math.round((1 - after / before) * 100)\n  };\n}\n\n// ── Helper: generate image via DALL-E and save ────────────────────────────────\nasync function generateAndSave(prompt, filepath) {\n  const body = JSON.stringify({\n    model: 'gpt-image-1', prompt, n: 1,\n    size: '1536x1024', quality: 'high'\n  });\n  const b64Data = await new Promise((resolve, reject) => {\n    const req = https.request({\n      hostname: 'api.openai.com',\n      path: '/v1/images/generations',\n      method: 'POST',\n      headers: {\n        'Content-Type':   'application/json',\n        'Authorization':  `Bearer ${apiKey}`,\n        'Content-Length': Buffer.byteLength(body)\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', chunk => data += chunk);\n      res.on('end', () => {\n        try {\n          const parsed = JSON.parse(data);\n          if (parsed.error) reject(new Error('gpt-image-1 error: ' + parsed.error.message));\n          else resolve(parsed.data[0].b64_json);\n        } catch(e) {\n          reject(new Error('gpt-image-1 parse error: ' + data.slice(0, 200)));\n        }\n      });\n    });\n    req.on('error', reject);\n    req.write(body);\n    req.end();\n  });\n\n  fs.writeFileSync(filepath, Buffer.from(b64Data, 'base64'));\n\n  const compression = compressImage(filepath, JPEG_QUALITY, MAX_WIDTH, CONVERT_WEBP);\n  console.log(`   📦 ${path.basename(filepath)}: ${compression.beforeKb}KB → ${compression.afterKb}KB (saved ${compression.savedPercent}%)`);\n  return compression;\n}\n\n// ── Read title & subtitle from script.md ─────────────────────────────────────\nconst scriptPath = path.join(dir, 'script.md');\nlet title    = 'Cyber Fraud Alert';\nlet subtitle = 'Apne aap ko bachao';\nif (fs.existsSync(scriptPath)) {\n  const lines = fs.readFileSync(scriptPath, 'utf8')\n                  .split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n  if (lines[0]) title    = lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim();\n  if (lines[1]) subtitle = lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim();\n}\n\n// ── Generate all images in parallel (batches of 3 to stay within rate limits) ──\nconst items = $input.all();\n\nasync function runBatched(taskFns, concurrency) {\n  const results = [];\n  for (let i = 0; i < taskFns.length; i += concurrency) {\n    const batch = taskFns.slice(i, i + concurrency);\n    results.push(...await Promise.all(batch.map(fn => fn())));\n  }\n  return results;\n}\n\n// ── Thumbnail prompt for image0 (branded, with bold Hindi text) ─────────────\nconst thumbnailPrompt = `Cinematic YouTube thumbnail for a Hindi cybersecurity awareness video. Bold Hindi title text: \"${title}\". Subtitle: \"${subtitle}\". Design: dramatic split composition — left side shows a shocked middle-aged Indian woman in salwar kameez with wide fearful eyes holding a smartphone, right side shows a warning symbol and bold Hindi text overlay. Deep red and yellow color palette, high contrast, professional Indian YouTube thumbnail style, ultra-realistic photographic quality, 16:9 widescreen. Large bold Hindi Devanagari text is the dominant visual element.`;\n\n// Build task list: image0 thumbnail first, then story images\nconst thumbPath  = path.join(imgsDir, 'image0.jpeg');\nconst allTaskFns = [\n  () => generateAndSave(thumbnailPrompt, thumbPath),\n  ...items.map(item => {\n    const { prompt, filename } = item.json;\n    return () => generateAndSave(prompt, path.join(imgsDir, filename));\n  })\n];\n\nconsole.log(`⏳ Generating ${allTaskFns.length} images in parallel batches of 3...`);\nconst allResults  = await runBatched(allTaskFns, 3);\nconst thumbResult = allResults[0];\nconst storyComps  = allResults.slice(1);\nconsole.log(`✅ All ${allResults.length} images done.`);\n\nconst results = items.map((item, i) => {\n  const compression = storyComps[i];\n  const { filename, news_index, headline, variant, is_thumbnail } = item.json;\n  const finalFilename = CONVERT_WEBP ? filename.replace(/\\.jpeg$/, '.webp') : filename;\n  return {\n    json: {\n      filename:    finalFilename,\n      filepath:    compression.finalPath,\n      news_index,\n      headline,\n      variant,\n      is_thumbnail,\n      size_kb:     compression.afterKb,\n      original_kb: compression.beforeKb,\n      saved_kb:    compression.savedKb,\n      saved_pct:   compression.savedPercent,\n      thumbnail: {\n        generated: true,\n        path:      thumbResult.finalPath,\n        size_kb:   thumbResult.afterKb,\n        title,\n        subtitle\n      }\n    }\n  };\n});\n\nreturn results;"
       },
       "id": "78b01335-ba18-4128-9c17-032696de9c42",
       "name": "💾 Save Image to Disk1",
@@ -642,147 +642,47 @@
         -32,
         64
       ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1400,
+        200
+      ],
+      "id": "a1b2c3d4-e5f6-7890-abcd-stage2trigger1",
+      "name": "▶️ Stage 2: Generate Images & Video"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nif (!fs.existsSync(excelPath)) throw new Error('script_editor.xlsx not found — run Stage 1 first.');\n\nconst pyCode = `\nimport openpyxl, json, sys, os\nwb = openpyxl.load_workbook(sys.argv[1])\nws = wb['Script Editor']\nTEXT_COL   = 1\nDATA_START = 4\nparagraphs = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        paragraphs.append(str(val).strip())\n\nscript_path = os.path.join(os.path.dirname(sys.argv[1]), 'script.md')\ntitle    = 'Cyber Fraud Alert'\nsubtitle = 'Apne aap ko bachao'\nif os.path.exists(script_path):\n    lines = [l.strip() for l in open(script_path, encoding='utf-8') if l.strip()]\n    if lines:         title    = lines[0].replace('TITLE:', '').replace('#', '').strip()\n    if len(lines) > 1: subtitle = lines[1].replace('SUBTITLE:', '').replace('#', '').strip()\n\ncontent_paras = paragraphs[1:-1] if len(paragraphs) > 2 else paragraphs\nsep = chr(10)\nnumbered = (sep+sep).join('PARAGRAPH ' + str(i+1) + ':' + sep + p for i, p in enumerate(content_paras))\nprint(json.dumps({'title':title,'subtitle':subtitle,'paragraphCount':len(paragraphs),'imagesNeeded':len(content_paras),'numberedParagraphs':numbered}))\n`;\n\nconst pyPath = path.join(dir, '_read_excel_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\nlet result = '';\ntry {\n  result = execSync(`python3 \"${pyPath}\" \"${excelPath}\"`, { encoding: 'utf8', timeout: 30000 });\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\nreturn [{ json: JSON.parse(result.trim()) }];"
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-readexcelpara1",
+      "name": "📖 Read Paragraphs from Excel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nif (!fs.existsSync(excelPath)) throw new Error('script_editor.xlsx not found: ' + excelPath);\n\nconst pyCode = `\nimport openpyxl, os, json, sys\nfrom openpyxl.worksheet.datavalidation import DataValidation\nexcel_path = sys.argv[1]\nimg_dir    = sys.argv[2]\nwb = openpyxl.load_workbook(excel_path)\nws = wb['Script Editor']\nTEXT_COL   = 1\nIMAGE_COL  = 2\nDATA_START = 4\ndata_rows = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        data_rows.append(row[0].row)\nn = len(data_rows)\nfor i, row_num in enumerate(data_rows):\n    ws.cell(row=row_num, column=IMAGE_COL).value = 0 if (i == 0 or i == n-1) else i\ngen_images = sorted(\n    [f.replace('.jpeg','') for f in os.listdir(img_dir)\n     if f.startswith('image') and f.endswith('.jpeg') and f != 'image0.jpeg'],\n    key=lambda x: int(x.replace('image','')) if x.replace('image','').isdigit() else 9999\n)\nif 'Image Reference' in wb.sheetnames:\n    ref_ws = wb['Image Reference']\n    for row in ref_ws.iter_rows(min_row=2):\n        for cell in row: cell.value = None\n    for idx, name in enumerate(gen_images):\n        ref_ws.cell(row=idx+2, column=1).value = int(name.replace('image',''))\n        ref_ws.cell(row=idx+2, column=2).value = name + '.jpeg'\nws.data_validations.dataValidation = [\n    dv for dv in ws.data_validations.dataValidation if 'B' not in str(dv.sqref)\n]\nmax_img  = max([int(name.replace('image','')) for name in gen_images], default=0)\nnum_list = ','.join(str(x) for x in range(0, max_img+1))\ndv = DataValidation(type='list', formula1='\"' + num_list + '\"', allow_blank=True, showErrorMessage=False)\ndv.sqref = 'B' + str(DATA_START) + ':B' + str(data_rows[-1])\nws.add_data_validation(dv)\nwb.save(excel_path)\nprint(json.dumps({'success':True,'paragraphs':n,'images':len(gen_images)}))\n`;\n\nconst pyPath = path.join(dir, '_automap_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\nlet mapResult = '', mapError = '';\ntry {\n  mapResult = execSync(`python3 \"${pyPath}\" \"${excelPath}\" \"${dir}/images\"`,\n    { encoding: 'utf8', timeout: 30000 });\n} catch(e) {\n  mapError = (e.stderr || '') + ' ' + (e.message || '');\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\nif (mapError && !mapResult.includes('\"success\": true')) {\n  throw new Error('Auto-mapper failed: ' + mapError.slice(0, 300));\n}\nconst mapJson = JSON.parse(mapResult.trim());\nconsole.log('Images auto-mapped: ' + mapJson.images + ' images, ' + mapJson.paragraphs + ' paragraphs');\nreturn [{ json: mapJson }];"
+      },
+      "id": "c3d4e5f6-a7b8-9012-cdef-automapimgs01",
+      "name": "✅ Auto-map Images to Excel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        200
+      ]
     }
   ],
   "pinData": {},
   "connections": {
-    "🐍 Run: script_to_excel.py": {
-      "main": [
-        [
-          {
-            "node": "✅ Check Excel Created",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "✅ Check Excel Created": {
-      "main": [
-        []
-      ]
-    },
-    "🐍 Run: excel_to_video.py": {
-      "main": [
-        [
-          {
-            "node": "🎬 Run: generate_video_different_images.py",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎬 Run: generate_video_different_images.py": {
-      "main": [
-        [
-          {
-            "node": "🔍 Check Video Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "When clicking 'Execute workflow'": {
-      "main": [
-        [
-          {
-            "node": "📂 Find Video & Load Metadata",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📖 Load script.md from Disk1": {
-      "main": [
-        [
-          {
-            "node": "🎨 OpenAI: Generate Image Prompts1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎨 OpenAI: Generate Image Prompts1": {
-      "main": [
-        [
-          {
-            "node": "⚙️ Parse & Flatten Prompts1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "⚙️ Parse & Flatten Prompts1": {
-      "main": [
-        [
-          {
-            "node": "💾 Save Image to Disk1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "⏰ Daily Schedule (7AM IST)1": {
-      "main": [
-        [
-          {
-            "node": "📖 Load script.md from Disk1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🔍 Check Video Output": {
-      "main": [
-        [
-          {
-            "node": "📖 Read Script for Metadata",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📖 Read Script for Metadata": {
-      "main": [
-        [
-          {
-            "node": "🎬 Generate YouTube Metadata",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎬 Generate YouTube Metadata": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code in JavaScript": {
-      "main": [
-        [
-          {
-            "node": "💾 Save pipeline_meta.json",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "📋 Form - Enter Topic1": {
       "main": [
         [
@@ -863,15 +763,163 @@
             "node": "📤 Form - Show Success",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "🐍 Run: script_to_excel.py",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
-    "⏰ Daily Schedule (7AM IST)2": {
+    "🐍 Run: script_to_excel.py": {
+      "main": [
+        [
+          {
+            "node": "✅ Check Excel Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "▶️ Stage 2: Generate Images & Video": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Paragraphs from Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Paragraphs from Excel": {
+      "main": [
+        [
+          {
+            "node": "🎨 OpenAI: Generate Image Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎨 OpenAI: Generate Image Prompts1": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Parse & Flatten Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Parse & Flatten Prompts1": {
+      "main": [
+        [
+          {
+            "node": "💾 Save Image to Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save Image to Disk1": {
+      "main": [
+        [
+          {
+            "node": "✅ Auto-map Images to Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Auto-map Images to Excel": {
       "main": [
         [
           {
             "node": "🐍 Run: excel_to_video.py",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🐍 Run: excel_to_video.py": {
+      "main": [
+        [
+          {
+            "node": "🎬 Run: generate_video_different_images.py",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎬 Run: generate_video_different_images.py": {
+      "main": [
+        [
+          {
+            "node": "🔍 Check Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Check Video Output": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Script for Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Script for Metadata": {
+      "main": [
+        [
+          {
+            "node": "🎬 Generate YouTube Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎬 Generate YouTube Metadata": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "💾 Save pipeline_meta.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save pipeline_meta.json": {
+      "main": [
+        [
+          {
+            "node": "📂 Find Video & Load Metadata",
             "type": "main",
             "index": 0
           }
@@ -883,6 +931,17 @@
         [
           {
             "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "📤 YouTube: Upload Video",
             "type": "main",
             "index": 0
           }
@@ -927,33 +986,6 @@
         [
           {
             "node": "✅ Log: Pipeline Complete",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "💾 Save pipeline_meta.json": {
-      "main": [
-        []
-      ]
-    },
-    "Code in JavaScript1": {
-      "main": [
-        [
-          {
-            "node": "📤 YouTube: Upload Video",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "💾 Save Image to Disk1": {
-      "main": [
-        [
-          {
-            "node": "🐍 Run: script_to_excel.py",
             "type": "main",
             "index": 0
           }
