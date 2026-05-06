@@ -1,69 +1,68 @@
 {
-  "name": "bankingexperram_video_pipeline",
   "nodes": [
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(\n    'cd \"/Users/ramdudeja/Desktop/bankingexpertram\" && python3 script_to_excel.py 2>&1',\n    {\n      encoding: 'utf8',\n      timeout: 300000,\n      shell: '/bin/bash'\n    }\n  );\n} catch(e) {\n  stdout   = e.stdout  || '';\n  stderr   = e.stderr  || e.message || '';\n  exitCode = e.status  || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
       },
-      "id": "78d59527-fd19-475c-ac9d-9d5de3ab9792",
+      "id": "6eeee7da-9094-4d90-aaee-8d7b12a5879f",
       "name": "🐍 Run: script_to_excel.py",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        176,
-        64
+        -48,
+        -32
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded path ────────────────────────────────────────────────────────────\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nconst stdout    = $input.first().json.stdout || '';\nconst stderr    = $input.first().json.stderr || '';\n\nif (!fs.existsSync(excelPath)) {\n  throw new Error(`script_to_excel.py failed.\\nstdout: ${stdout}\\nstderr: ${stderr}`);\n}\n\nconst pyCode = `\nimport openpyxl, os, json, sys\nfrom openpyxl.worksheet.datavalidation import DataValidation\n\nexcel_path = sys.argv[1]\nimg_dir    = sys.argv[2]\n\nwb = openpyxl.load_workbook(excel_path)\nws = wb['Script Editor']\n\nTEXT_COL   = 1\nIMAGE_COL  = 2\nDATA_START = 4\n\ndata_rows = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        data_rows.append(row[0].row)\n\nn = len(data_rows)\nprint(f\"Script rows found: {n}\", file=sys.stderr)\n\nif n < 2:\n    print(json.dumps({\"success\": False, \"reason\": \"too few rows\", \"paragraphs\": n}))\n    sys.exit(0)\n\nfor i, row_num in enumerate(data_rows):\n    if i == 0 or i == n - 1:\n        ws.cell(row=row_num, column=IMAGE_COL).value = 0\n    else:\n        ws.cell(row=row_num, column=IMAGE_COL).value = i\n\ngen_images = sorted(\n    [f.replace('.jpeg','') for f in os.listdir(img_dir)\n     if f.startswith('image') and f.endswith('.jpeg') and f != 'image0.jpeg'],\n    key=lambda x: int(x.replace('image','')) if x.replace('image','').isdigit() else 9999\n)\n\nif 'Image Reference' in wb.sheetnames:\n    ref_ws = wb['Image Reference']\n    for row in ref_ws.iter_rows(min_row=2):\n        for cell in row:\n            cell.value = None\n    for idx, name in enumerate(gen_images):\n        ref_ws.cell(row=idx+2, column=1).value = int(name.replace('image',''))\n        ref_ws.cell(row=idx+2, column=2).value = name + '.jpeg'\n\nws.data_validations.dataValidation = [\n    dv for dv in ws.data_validations.dataValidation\n    if 'B' not in str(dv.sqref)\n]\n\nmax_img  = max([int(name.replace('image','')) for name in gen_images], default=0)\nnum_list = ','.join(str(x) for x in range(0, max_img + 1))\ndv = DataValidation(\n    type='list',\n    formula1='\"' + num_list + '\"',\n    allow_blank=True,\n    showErrorMessage=False\n)\nlast_row = data_rows[-1]\ndv.sqref = f'B{DATA_START}:B{last_row}'\nws.add_data_validation(dv)\n\nwb.save(excel_path)\nprint(json.dumps({\n    \"success\":         True,\n    \"paragraphs\":      n,\n    \"images_assigned\": n,\n    \"first_row\":       0,\n    \"last_row\":        0,\n    \"middle\":          f\"1 to {n-2}\" if n > 2 else \"none\"\n}))\n`;\n\nconst pyPath = path.join(dir, '_auto_mapper_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\n\nlet mapResult = '', mapError = '';\ntry {\n  mapResult = execSync(\n    `python3 \"${pyPath}\" \"${excelPath}\" \"${dir}\"`,\n    { encoding: 'utf8', timeout: 30000 }\n  );\n} catch (e) {\n  mapError = (e.stderr || '') + '\\n' + (e.message || '');\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\n\nif (mapError && !mapResult.includes('\"success\": true')) {\n  throw new Error(`Auto-mapper failed:\\n${mapError}`);\n}\n\nlet mapJson = {};\ntry { mapJson = JSON.parse(mapResult.trim()); } catch(_) {}\n\nconst stats = fs.statSync(excelPath);\nreturn [{ json: {\n  excelPath,\n  excelSizeKb:  Math.round(stats.size / 1024),\n  autoMap:      mapJson,\n  autoMapError: mapError.trim().slice(-300),\n  createdAt:    new Date().toISOString()\n} }];"
       },
-      "id": "2ee3989b-17d8-4ab0-897f-c6f3373a3d7d",
+      "id": "6ca8a5cc-3755-499a-8cd6-acc8dfd40916",
       "name": "✅ Check Excel Created",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        384,
-        64
+        112,
+        -32
       ]
     },
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(`cd \"${dir}\" && python3 excel_to_video.py 2>&1`, {\n    encoding: 'utf8',\n    timeout: 300000,\n    shell: '/bin/bash'\n  });\n} catch(e) {\n  stdout = e.stdout || '';\n  stderr = e.stderr || e.message || '';\n  exitCode = e.status || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
       },
-      "id": "cdbf353a-c293-40fd-a567-5a77bbaa5f39",
+      "id": "0c4b73e0-ad3c-4980-8e58-0f1f0749e341",
       "name": "🐍 Run: excel_to_video.py",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1072,
-        304
+        -1536,
+        512
       ]
     },
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(`cd \"${dir}\" && python3 video_generator.py --article revised_script.md --image-map script_editor.xlsx 2>&1`, {\n    encoding: 'utf8',\n    timeout: 300000,\n    shell: '/bin/bash'\n  });\n} catch(e) {\n  stdout = e.stdout || '';\n  stderr = e.stderr || e.message || '';\n  exitCode = e.status || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
       },
-      "id": "57685eee-7ccc-43ea-a8a0-d1062ffdfc7b",
+      "id": "8b71d224-f0b5-46c5-8795-433f5642c157",
       "name": "🎬 Run: generate_video_different_images.py",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -880,
-        304
+        -1344,
+        512
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir    = rawDir.split(',')[0].trim();\nconst imgDir = path.join(dir, 'images');\nconst stdout = $input.first().json.stdout || '';\nconst stderr = $input.first().json.stderr || '';\n\nlet videoPath = null;\n\n// 1. Path printed in script stdout\nconst m = stdout.match(/File\\s*:\\s*(.+\\.mp4)/);\nif (m) { const fp = m[1].trim(); if (fs.existsSync(fp)) videoPath = fp; }\n\n// 2. Flat candidates in root\nif (!videoPath) {\n  for (const name of ['final_video.mp4','output_video.mp4','rrnews_video.mp4','video.mp4']) {\n    const fp = path.join(dir, name);\n    if (fs.existsSync(fp)) { videoPath = fp; break; }\n  }\n}\n\n// 3. Newest output_* subdirectory\nif (!videoPath) {\n  const subs = fs.readdirSync(dir)\n    .filter(e => e.startsWith('output_'))\n    .sort().reverse();\n  outer: for (const sub of subs) {\n    const subPath = path.join(dir, sub);\n    if (!fs.statSync(subPath).isDirectory()) continue;\n    for (const name of ['final_video.mp4','output_video.mp4','video.mp4']) {\n      const fp = path.join(subPath, name);\n      if (fs.existsSync(fp)) { videoPath = fp; break outer; }\n    }\n  }\n}\n\nif (!videoPath) throw new Error(\n  `Video not found.\\nstdout: ${stdout.slice(-500)}\\nstderr: ${stderr.slice(-300)}`\n);\n\nconst videoSizeMb   = Math.round(fs.statSync(videoPath).size / (1024*1024) * 10) / 10;\nconst thumbnailPath = path.join(imgDir, 'image0.jpeg');   // ← images/ subdir\nconst hasThumbnail  = fs.existsSync(thumbnailPath);\n\nreturn [{ json: {\n  videoPath,\n  videoSizeMb,\n  thumbnailPath,\n  hasThumbnail,\n  generatedAt: new Date().toISOString(),\n  genOutput: stdout.slice(-300)\n} }];"
       },
-      "id": "a4a9d414-794f-410f-86a5-ced30c667e93",
+      "id": "3f33dda8-f56e-4ac1-b166-d68241b05184",
       "name": "🔍 Check Video Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -720,
-        304
+        -1184,
+        512
       ]
     },
     {
@@ -71,24 +70,11 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1232,
-        608
+        -1696,
+        816
       ],
-      "id": "8d08c3de-48d3-48b3-9d0e-18fa7d5875ce",
+      "id": "1acb2c8b-8473-49f5-9f54-336a88f5b489",
       "name": "When clicking 'Execute workflow'"
-    },
-    {
-      "parameters": {
-        "jsCode": "const fs   = require('fs');\nconst path = require('path');\n\n// ── Hardcoded working directory ───────────────────────────────────────────────\nconst dir = '/Users/ramdudeja/Desktop/bankingexpertram';\n\n// ── Read script.md ────────────────────────────────────────────────────────────\nconst scriptPath = path.join(dir, 'script.md');\nif (!fs.existsSync(scriptPath)) {\n  throw new Error(`script.md not found at: ${scriptPath}`);\n}\nconst scriptMd = fs.readFileSync(scriptPath, 'utf8');\n\n// ── Count paragraphs ──────────────────────────────────────────────────────────\nconst paragraphs     = scriptMd.split(/\\n\\n+/).map(p => p.trim()).filter(p => p.length > 0);\nconst paragraphCount = paragraphs.length;\nconst imagesNeeded   = Math.max(1, paragraphCount - 2);\n\n// ── Extract title & subtitle from first two non-empty lines ───────────────────\nconst lines    = scriptMd.split('\\n').map(l => l.trim()).filter(l => l.length > 0);\nconst title    = lines[0] ? lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim() : 'Cyber Fraud Alert';\nconst subtitle = lines[1] ? lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim() : 'Apne aap ko bachao';\n\n// ── Try structured NEWS SUMMARY block first ───────────────────────────────────\nlet newsText = '';\nlet stories  = [];\n\nconst newsMatch = scriptMd.match(/## NEWS SUMMARY\\n([\\s\\S]*?)\\n---/);\nif (newsMatch) {\n  newsText = newsMatch[1].trim();\n  const storyRegex = /NEWS (\\d+): (.+?)\\n([\\s\\S]*?)(?=NEWS \\d+:|$)/g;\n  let match;\n  while ((match = storyRegex.exec(newsText)) !== null) {\n    stories.push({\n      index:    parseInt(match[1]),\n      headline: match[2].trim(),\n      summary:  match[3].trim().split('\\n')[0]\n    });\n  }\n}\n\n// ── Fallback: plain Hindi narrative script ────────────────────────────────────\nif (stories.length === 0) {\n  newsText = scriptMd.slice(0, 3000);\n  stories  = paragraphs.slice(0, imagesNeeded).map((para, i) => ({\n    index:    i + 1,\n    headline: para.split(/[।.!?]/)[0].trim().slice(0, 80) || `Scene ${i + 1}`,\n    summary:  para.slice(0, 200)\n  }));\n}\n\n// ── Build numbered paragraphs for image prompt generation ─────────────────────\n// Skip first para (title line) and last para (outro/CTA) — no images needed\nconst contentParagraphs  = paragraphs.slice(1, paragraphs.length - 1);\nconst numberedParagraphs = contentParagraphs\n  .slice(0, imagesNeeded)\n  .map((para, i) => `PARAGRAPH ${i + 1}:\\n${para}`)\n  .join('\\n\\n');\n\n// ── Return ────────────────────────────────────────────────────────────────────\nreturn [{\n  json: {\n    title,\n    subtitle,\n    newsText,\n    numberedParagraphs,\n    stories,\n    paragraphCount,\n    imagesNeeded,\n    scriptPath\n  }\n}];"
-      },
-      "id": "11430425-d0d1-491f-bebb-1052b34980d2",
-      "name": "📖 Load script.md from Disk1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -784,
-        64
-      ]
     },
     {
       "parameters": {
@@ -111,13 +97,13 @@
         },
         "options": {}
       },
-      "id": "e762c3a2-5b8a-4c62-978d-a0f4e84c621a",
+      "id": "976da13e-d808-4146-991e-12fa966fc919",
       "name": "🎨 OpenAI: Generate Image Prompts1",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.7,
       "position": [
-        -592,
-        64
+        -1056,
+        272
       ],
       "credentials": {
         "openAiApi": {
@@ -130,13 +116,13 @@
       "parameters": {
         "jsCode": "const raw = $input.first().json?.message?.content || $input.first().json?.content || '';\nlet jsonStr = raw;\nconst m = raw.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\nif (m) jsonStr = m[1];\nlet promptsData;\ntry { promptsData = JSON.parse(jsonStr.trim()); }\ncatch(e) { const a = jsonStr.match(/\\[([\\s\\S]*)\\]/); promptsData = JSON.parse('[' + a[1] + ']'); }\n\n// Start from image1 — image0 is NEVER generated (it's the existing thumbnail)\nconst flat = promptsData.map((item, idx) => ({\n  news_index: item.newsIndex || item.news_index || (idx + 1),\n  headline: item.headline || `Story ${idx + 1}`,\n  prompt: item.prompt || '',\n  filename: `image${idx + 1}.jpeg`,\n  imageIndex: idx + 1,\n  is_thumbnail: false\n}));\n\nreturn flat.map(f => ({ json: f }));"
       },
-      "id": "e0d7fc57-a91f-4431-9a0b-febaee9a8410",
+      "id": "0ee932e8-5fd1-42a7-9688-61807e23674e",
       "name": "⚙️ Parse & Flatten Prompts1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -288,
-        64
+        -752,
+        272
       ]
     },
     {
@@ -150,13 +136,13 @@
           ]
         }
       },
-      "id": "696bc414-ff62-4bd5-8662-433792b967ea",
+      "id": "74b6a1a5-fa3b-48a1-9000-698305119609",
       "name": "⏰ Daily Schedule (7AM IST)1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1136,
-        64
+        -1600,
+        272
       ]
     },
     {
@@ -166,10 +152,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -560,
-        304
+        -1024,
+        512
       ],
-      "id": "f8f69a00-4b43-4eee-98e1-950cfd6ad564",
+      "id": "9a31038f-4570-4011-9b17-df65ee55c5ef",
       "name": "📖 Read Script for Metadata"
     },
     {
@@ -179,10 +165,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -352,
-        304
+        -816,
+        512
       ],
-      "id": "8695e8df-1380-4151-8b70-ef8b2f93b6fa",
+      "id": "31f84b55-0fa3-4c82-886d-af66a6585db2",
       "name": "🎬 Generate YouTube Metadata"
     },
     {
@@ -192,10 +178,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -176,
-        320
+        -640,
+        528
       ],
-      "id": "ec1fb67a-9425-480e-a606-7c8fb97f4a0b",
+      "id": "1523df07-d116-4087-ba4d-eed2c82b6706",
       "name": "Code in JavaScript"
     },
     {
@@ -205,13 +191,13 @@
         "completionMessage": "={{ $json.script }}",
         "options": {}
       },
-      "id": "4f8cd6c3-c44b-4730-bcd3-d4ca0ed84754",
+      "id": "8b0c5212-90fb-45bc-9ecd-26577c1eac66",
       "name": "📤 Form - Show Success",
       "type": "n8n-nodes-base.form",
       "typeVersion": 2.5,
       "position": [
-        432,
-        -432
+        -32,
+        -224
       ],
       "webhookId": "696f6db7-7090-4799-8582-6cb401552a09",
       "alwaysOutputData": false
@@ -223,13 +209,13 @@
         "completionMessage": "There is some error and the script is not generated!",
         "options": {}
       },
-      "id": "21061f96-2fd3-4498-a9f0-1c2b54230e0e",
+      "id": "928e4df6-4d14-40ce-be2a-4ba4c530fafe",
       "name": "❌ Form - Show Error",
       "type": "n8n-nodes-base.form",
       "typeVersion": 2.5,
       "position": [
-        -160,
-        -192
+        -624,
+        16
       ],
       "webhookId": "696f6db7-7090-4799-8582-6cb401552a09"
     },
@@ -266,15 +252,15 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "e8d9e900-1761-443a-beac-37f52e2b6a44",
+      "id": "bff67415-6608-43d6-bf7f-da18bf8df3c7",
       "name": "📋 Form - Enter Topic1",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
       "position": [
-        -1232,
-        -320
+        -1696,
+        -112
       ],
-      "webhookId": "66c12825-09ca-4f9d-9fd2-2f95d4b56057"
+      "webhookId": "2fe91d3b-4d70-42c9-a841-3250b4c4fbce"
     },
     {
       "parameters": {
@@ -302,13 +288,13 @@
         },
         "options": {}
       },
-      "id": "d3d7598f-1118-48e9-ba5d-ba36ef450bff",
+      "id": "63a7e5ae-6d32-4fbe-948b-b51984913012",
       "name": "📌 Set - Extract Input Params",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -944,
-        -320
+        -1408,
+        -112
       ]
     },
     {
@@ -337,13 +323,13 @@
           "timeout": 60000
         }
       },
-      "id": "643eaf1d-1708-4563-973e-06cdd1d1f4b4",
+      "id": "c18994ae-7f8b-4ea2-987d-f9158df2fd61",
       "name": "🤖 Claude API - Generate Script",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -736,
-        -320
+        -1200,
+        -112
       ],
       "credentials": {
         "anthropicApi": {
@@ -376,39 +362,39 @@
         },
         "options": {}
       },
-      "id": "467c5445-8a5d-455b-b25f-05ae567c49e7",
+      "id": "3dffb807-d60f-4dc6-9111-9f797ca73c0d",
       "name": "✅ IF - API Success?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -416,
-        -320
+        -880,
+        -112
       ]
     },
     {
       "parameters": {
         "jsCode": "const response = $input.first().json;\nconst rawScript = response.content[0].text;\n\nconst lines = rawScript.split('\\n');\nlet title = 'Cyber Fraud Alert';\nlet subtitle = 'Protect Yourself Now';\n\nfor (let i = 0; i < Math.min(5, lines.length); i++) {\n  const line = lines[i].trim();\n  if (line.startsWith('TITLE:')) title = line.replace('TITLE:', '').trim().replace(/^=+\\s*/, '');\n  if (line.startsWith('SUBTITLE:')) subtitle = line.replace('SUBTITLE:', '').trim();\n}\n\n// Remove TITLE: and SUBTITLE: lines\nconst cleanedScript = lines\n  .filter(line => !line.trim().startsWith('TITLE:') && !line.trim().startsWith('SUBTITLE:'))\n  .join('\\n')\n  .trimStart()\n  .replace(/^=+\\s*/gm, '');  // remove = at start of every line\n\n// Re-insert title and subtitle at top without the TITLE:/SUBTITLE: prefix\nconst finalScript = title + '\\n' + subtitle + '\\n\\n' + cleanedScript;\n\nlet topic = 'Unknown Topic';\ntry {\n  topic = $('📌 Set - Extract Input Params1').first().json.topic\n       || $('Set - Extract Input Params1').first().json.topic;\n} catch(e) {\n  topic = title || 'Unknown Topic';\n}\n\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);\nconst wordCount = finalScript.split(/\\s+/).length;\nconst estimatedMinutes = Math.round(wordCount / 130);\n\nreturn [{\n  json: {\n    script: finalScript,\n    topic: topic,\n    title: title,\n    subtitle: subtitle,\n    timestamp: timestamp,\n    wordCount: wordCount,\n    estimatedDuration: estimatedMinutes + ' minutes',\n    filename: 'script.md',\n    fullPath: '/Users/ramdudeja/Desktop/Hindi-video-generator/script.md'\n  }\n}];"
       },
-      "id": "433acf8c-f6da-478b-98ea-a0efcdc48ea3",
+      "id": "5cee836d-0237-4575-9085-14a1d86f2b71",
       "name": "⚙️ Code - Parse Script & Extract Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        -432
+        -608,
+        -224
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst script = $input.first().json.script;\nconst targetPath = '/Users/ramdudeja/Desktop/bankingexpertram/script.md';\n\nfs.mkdirSync(path.dirname(targetPath), { recursive: true });\nfs.writeFileSync(targetPath, script, 'utf8');\n\nconst fileSize = fs.statSync(targetPath).size;\n\nreturn [{\n  json: {\n    stdout: JSON.stringify({\n      saved: true,\n      path: targetPath,\n      size_bytes: fileSize\n    })\n  }\n}];"
       },
-      "id": "af5ef40f-dde7-4ecc-94ad-d9e50985bb55",
+      "id": "6b99d687-f0e8-48d5-8ddb-543dadddf1a9",
       "name": "💾 Execute - Save script.md",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        64,
-        -432
+        -400,
+        -224
       ]
     },
     {
@@ -467,13 +453,13 @@
         },
         "options": {}
       },
-      "id": "7a711b78-5cdb-4eaf-80f4-0f90538e3996",
+      "id": "5de96e81-e00e-495e-b522-bf8d72e74e56",
       "name": "📦 Set - Prepare Final Output",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        240,
-        -432
+        -224,
+        -224
       ]
     },
     {
@@ -487,26 +473,26 @@
           ]
         }
       },
-      "id": "04b1bfc5-9191-42d4-91ef-3e9422c08044",
+      "id": "d5a3c549-10c2-4e71-9c59-62e3658c34b6",
       "name": "⏰ Daily Schedule (7AM IST)2",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1248,
-        304
+        -1760,
+        496
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\n\n// Always use output_v19/final_video.mp4 as the primary target\nconst primaryPath = path.join(dir, 'output_v19', 'final_video.mp4');\nlet videoPath = fs.existsSync(primaryPath) ? primaryPath : null;\n\n// Fallback: scan subdirectories only if primary not found\nif (!videoPath) {\n  const entries = fs.readdirSync(dir)\n    .filter(e => fs.statSync(path.join(dir, e)).isDirectory())\n    .sort().reverse();\n  outer: for (const sub of entries) {\n    for (const name of ['final_video.mp4', 'output_video.mp4', 'video.mp4']) {\n      const fp = path.join(dir, sub, name);\n      if (fs.existsSync(fp)) { videoPath = fp; break outer; }\n    }\n  }\n}\n\nif (!videoPath) throw new Error(`No video file found. Expected: ${primaryPath}`);\n\nconst metaPath = path.join(dir, 'pipeline_meta.json');\nif (!fs.existsSync(metaPath)) throw new Error(`pipeline_meta.json not found at ${metaPath}`);\n\nconst meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));\nif (!meta.title) throw new Error('title missing in pipeline_meta.json');\n\nconst videoSizeMb = Math.round(fs.statSync(videoPath).size / (1024 * 1024) * 10) / 10;\nconsole.log(`✅ Video found: ${videoPath} (${videoSizeMb} MB)`);\nconsole.log(`✅ Title: ${meta.title}`);\n\nreturn [{ json: {\n  videoPath,\n  videoSizeMb,\n  youtubeTitle:       meta.title,\n  youtubeDescription: meta.description || '',\n  youtubeTags:        meta.tags || []\n} }];"
       },
-      "id": "32876b21-3ff7-4dcb-a784-5e25ce63ffb0",
+      "id": "f5e22bf0-ba75-4e45-98c0-231d796820bc",
       "name": "📂 Find Video & Load Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -992,
-        608
+        -1456,
+        816
       ]
     },
     {
@@ -518,19 +504,19 @@
         "categoryId": "22",
         "options": {
           "defaultLanguage": "hi",
+          "description": "={{ $('📂 Find Video & Load Metadata').first().json.youtubeDescription }}",
           "privacyStatus": "public",
           "selfDeclaredMadeForKids": false,
-          "description": "={{ $('📂 Find Video & Load Metadata').first().json.youtubeDescription }}",
           "tags": "={{ $('📂 Find Video & Load Metadata').first().json.youtubeTags.join(',') }}"
         }
       },
-      "id": "fa8aea34-a7d1-4ede-9e6e-6018fd3d893c",
+      "id": "aa0e3968-5b13-492a-9058-58c032ddc92b",
       "name": "📤 YouTube: Upload Video",
       "type": "n8n-nodes-base.youTube",
       "typeVersion": 1,
       "position": [
-        -640,
-        608
+        -1104,
+        816
       ],
       "credentials": {
         "youTubeOAuth2Api": {
@@ -543,26 +529,26 @@
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\n\nconst ytResponse = $('📤 YouTube: Upload Video').first().json;\nconst videoId = ytResponse.uploadId\n  || ytResponse.id\n  || ytResponse.videoId\n  || ytResponse.snippet?.resourceId?.videoId\n  || ytResponse.contentDetails?.videoId\n  || null;\n\nif (!videoId) throw new Error(\n  `videoId not found. YouTube response keys: ${Object.keys(ytResponse).join(', ')}`\n);\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\nconst thumbnailPath = path.join(dir, 'images', 'image0.jpeg');\n\nif (!fs.existsSync(thumbnailPath)) throw new Error(`Thumbnail not found: ${thumbnailPath}`);\n\nreturn [{ json: { videoId, thumbnailPath } }];"
       },
-      "id": "41576bdd-4f20-45f9-9993-f8c636099930",
+      "id": "dc2f1e88-d168-41ef-9f5e-12b850058905",
       "name": "📂 Read Thumbnail Path1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -512,
-        608
+        -976,
+        816
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs');\nconst thumbnailPath = $input.first().json.thumbnailPath;\nconst videoId = $input.first().json.videoId;\n\nif (!fs.existsSync(thumbnailPath)) throw new Error(`Thumbnail not found: ${thumbnailPath}`);\n\nconst buffer = fs.readFileSync(thumbnailPath);\nconst base64 = buffer.toString('base64');\n\nreturn [{\n  json: { videoId, thumbnailPath },\n  binary: {\n    data: {\n      data: base64,\n      mimeType: 'image/jpeg',\n      fileName: 'image0.jpeg'\n    }\n  }\n}];"
       },
-      "id": "544eb4c2-dced-4351-b524-793c87129f5a",
+      "id": "ea31d601-8011-43fe-a41b-a90d714e4426",
       "name": "📂 Read image0.jpeg as Binary1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -368,
-        608
+        -832,
+        816
       ]
     },
     {
@@ -576,13 +562,13 @@
         "inputDataFieldName": "data",
         "options": {}
       },
-      "id": "61beb156-826e-4ab3-9710-561f662b2914",
+      "id": "85a1c6f7-1c1d-4b3d-b2d7-c0718ccc92d0",
       "name": "🖼️ YouTube: Set Thumbnail",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -208,
-        608
+        -672,
+        816
       ],
       "credentials": {
         "youTubeOAuth2Api": {
@@ -595,13 +581,13 @@
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\n\n// FIX: Take only the first path if env var contains comma-separated values\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram';\nconst dir = rawDir.split(',')[0].trim();\n\nconst videoId = $('📤 YouTube: Upload Video').first().json.id || 'unknown';\nconst title   = $('📂 Find Video & Load Metadata').first().json.youtubeTitle || 'unknown';\n\nconst log = {\n  timestamp: new Date().toISOString(),\n  workflow:  'bankingexpertram',\n  status:    'SUCCESS',\n  stage:     'youtube_upload',\n  videoId,\n  title,\n  videoUrl:  `https://youtube.com/watch?v=${videoId}`\n};\n\nfs.appendFileSync(path.join(dir, 'pipeline_log.jsonl'), JSON.stringify(log) + '\\n');\nconsole.log(`✅ Video published: ${log.videoUrl}`);\nreturn [{ json: log }];"
       },
-      "id": "6f0dd2c4-4aed-4935-8c73-f12d1cb74dae",
+      "id": "de449dc5-93e6-49c0-9ffb-4738e813f563",
       "name": "✅ Log: Pipeline Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -32,
-        608
+        -496,
+        816
       ]
     },
     {
@@ -611,10 +597,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        0,
-        320
+        -464,
+        528
       ],
-      "id": "775ae0b3-4fa1-4ea1-8cef-f85f02375a91",
+      "id": "2374a9a9-6e44-4688-bdb7-9ddd56cfd8ff",
       "name": "💾 Save pipeline_meta.json"
     },
     {
@@ -624,65 +610,174 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -816,
-        608
+        -1280,
+        816
       ],
-      "id": "17883cd9-1243-4aee-a999-def894f0f98c",
+      "id": "90c2d85c-67d9-45cf-9d29-9af530fcd64f",
       "name": "Code in JavaScript1"
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path'), https = require('https');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded working directory ───────────────────────────────────────────────\nconst dir     = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst imgsDir = path.join(dir, 'images');\nif (!fs.existsSync(imgsDir)) fs.mkdirSync(imgsDir, { recursive: true });\n\n// ── Read API key ──────────────────────────────────────────────────────────────\nconst keyPath = path.join(dir, '.openai_key');\nif (!fs.existsSync(keyPath)) throw new Error(`OpenAI key not found at: ${keyPath}`);\nconst apiKey = fs.readFileSync(keyPath, 'utf8').trim();\nif (!apiKey.startsWith('sk-')) throw new Error(`Invalid API key in ${keyPath}`);\n\n// ── Compression settings ──────────────────────────────────────────────────────\nconst JPEG_QUALITY = 92;\nconst MAX_WIDTH    = 1792;\nconst CONVERT_WEBP = false;\n\n// ── Helper: compress image ────────────────────────────────────────────────────\nfunction compressImage(inputPath, quality, maxWidth, toWebp) {\n  const outputPath = toWebp ? inputPath.replace(/\\.jpeg$/, '.webp') : inputPath;\n  const pyCode = `\nfrom PIL import Image\nimport sys, os\ninp = sys.argv[1]; out = sys.argv[2]; q = int(sys.argv[3]); mw = int(sys.argv[4])\nimg = Image.open(inp)\nif img.width > mw:\n    img = img.resize((mw, int(img.height * (mw / img.width))), Image.LANCZOS)\nif img.mode in ('RGBA', 'P'): img = img.convert('RGB')\nfmt = 'WEBP' if out.endswith('.webp') else 'JPEG'\nimg.save(out, fmt, quality=q, optimize=True)\nbefore = os.path.getsize(inp); after = os.path.getsize(out)\nprint(f\"{before},{after}\")\n`;\n  const pyPath = path.join(dir, '_compress_tmp.py');\n  fs.writeFileSync(pyPath, pyCode, 'utf8');\n  let output = '';\n  try {\n    output = execSync(\n      `python3 \"${pyPath}\" \"${inputPath}\" \"${outputPath}\" \"${quality}\" \"${maxWidth}\"`,\n      { encoding: 'utf8', timeout: 30000 }\n    );\n  } finally { try { fs.unlinkSync(pyPath); } catch(_) {} }\n  if (toWebp && outputPath !== inputPath && fs.existsSync(outputPath)) {\n    try { fs.unlinkSync(inputPath); } catch(_) {}\n  }\n  const [before, after] = output.trim().split(',').map(Number);\n  return {\n    finalPath:    outputPath,\n    beforeKb:     Math.round(before / 1024),\n    afterKb:      Math.round(after  / 1024),\n    savedKb:      Math.round((before - after) / 1024),\n    savedPercent: Math.round((1 - after / before) * 100)\n  };\n}\n\n// ── Helper: generate image via DALL-E and save ────────────────────────────────\nasync function generateAndSave(prompt, filepath) {\n  const body = JSON.stringify({\n    model: 'gpt-image-1', prompt, n: 1,\n    size: '1536x1024', quality: 'high'\n  });\n  const b64Data = await new Promise((resolve, reject) => {\n    const req = https.request({\n      hostname: 'api.openai.com',\n      path: '/v1/images/generations',\n      method: 'POST',\n      headers: {\n        'Content-Type':   'application/json',\n        'Authorization':  `Bearer ${apiKey}`,\n        'Content-Length': Buffer.byteLength(body)\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', chunk => data += chunk);\n      res.on('end', () => {\n        try {\n          const parsed = JSON.parse(data);\n          if (parsed.error) reject(new Error('gpt-image-1 error: ' + parsed.error.message));\n          else resolve(parsed.data[0].b64_json);\n        } catch(e) {\n          reject(new Error('gpt-image-1 parse error: ' + data.slice(0, 200)));\n        }\n      });\n    });\n    req.on('error', reject);\n    req.write(body);\n    req.end();\n  });\n\n  fs.writeFileSync(filepath, Buffer.from(b64Data, 'base64'));\n\n  const compression = compressImage(filepath, JPEG_QUALITY, MAX_WIDTH, CONVERT_WEBP);\n  console.log(`   📦 ${path.basename(filepath)}: ${compression.beforeKb}KB → ${compression.afterKb}KB (saved ${compression.savedPercent}%)`);\n  return compression;\n}\n\n// ── Read title & subtitle from script.md ─────────────────────────────────────\nconst scriptPath = path.join(dir, 'script.md');\nlet title    = 'Cyber Fraud Alert';\nlet subtitle = 'Apne aap ko bachao';\nif (fs.existsSync(scriptPath)) {\n  const lines = fs.readFileSync(scriptPath, 'utf8')\n                  .split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n  if (lines[0]) title    = lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim();\n  if (lines[1]) subtitle = lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim();\n}\n\n// ── Generate all images in parallel (batches of 3 to stay within rate limits) ──\nconst items = $input.all();\n\nasync function runBatched(taskFns, concurrency) {\n  const results = [];\n  for (let i = 0; i < taskFns.length; i += concurrency) {\n    const batch = taskFns.slice(i, i + concurrency);\n    results.push(...await Promise.all(batch.map(fn => fn())));\n  }\n  return results;\n}\n\n// ── Thumbnail prompt for image0 (branded, with bold Hindi text) ─────────────\nconst thumbnailPrompt = `Cinematic YouTube thumbnail for a Hindi cybersecurity awareness video. Bold Hindi title text: \"${title}\". Subtitle: \"${subtitle}\". Design: dramatic split composition — left side shows a shocked middle-aged Indian woman in salwar kameez with wide fearful eyes holding a smartphone, right side shows a warning symbol and bold Hindi text overlay. Deep red and yellow color palette, high contrast, professional Indian YouTube thumbnail style, ultra-realistic photographic quality, 16:9 widescreen. Large bold Hindi Devanagari text is the dominant visual element.`;\n\n// Build task list: image0 thumbnail first, then story images\nconst thumbPath  = path.join(imgsDir, 'image0.jpeg');\nconst allTaskFns = [\n  () => generateAndSave(thumbnailPrompt, thumbPath),\n  ...items.map(item => {\n    const { prompt, filename } = item.json;\n    return () => generateAndSave(prompt, path.join(imgsDir, filename));\n  })\n];\n\nconsole.log(`⏳ Generating ${allTaskFns.length} images in parallel batches of 3...`);\nconst allResults  = await runBatched(allTaskFns, 3);\nconst thumbResult = allResults[0];\nconst storyComps  = allResults.slice(1);\nconsole.log(`✅ All ${allResults.length} images done.`);\n\nconst results = items.map((item, i) => {\n  const compression = storyComps[i];\n  const { filename, news_index, headline, variant, is_thumbnail } = item.json;\n  const finalFilename = CONVERT_WEBP ? filename.replace(/\\.jpeg$/, '.webp') : filename;\n  return {\n    json: {\n      filename:    finalFilename,\n      filepath:    compression.finalPath,\n      news_index,\n      headline,\n      variant,\n      is_thumbnail,\n      size_kb:     compression.afterKb,\n      original_kb: compression.beforeKb,\n      saved_kb:    compression.savedKb,\n      saved_pct:   compression.savedPercent,\n      thumbnail: {\n        generated: true,\n        path:      thumbResult.finalPath,\n        size_kb:   thumbResult.afterKb,\n        title,\n        subtitle\n      }\n    }\n  };\n});\n\nreturn results;"
       },
-      "id": "78b01335-ba18-4128-9c17-032696de9c42",
+      "id": "e275adbf-eaa0-4978-8e8f-7d55e1ce5d7e",
       "name": "💾 Save Image to Disk1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -32,
-        64
+        -496,
+        272
       ]
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -1400,
-        200
-      ],
-      "id": "a1b2c3d4-e5f6-7890-abcd-stage2trigger1",
-      "name": "▶️ Stage 2: Generate Images & Video"
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nif (!fs.existsSync(excelPath)) throw new Error('script_editor.xlsx not found — run Stage 1 first.');\n\nconst pyCode = `\nimport openpyxl, json, sys, os\nwb = openpyxl.load_workbook(sys.argv[1])\nws = wb['Script Editor']\nTEXT_COL   = 1\nDATA_START = 4\nparagraphs = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        paragraphs.append(str(val).strip())\n\nscript_path = os.path.join(os.path.dirname(sys.argv[1]), 'script.md')\ntitle    = 'Cyber Fraud Alert'\nsubtitle = 'Apne aap ko bachao'\nif os.path.exists(script_path):\n    lines = [l.strip() for l in open(script_path, encoding='utf-8') if l.strip()]\n    if lines:         title    = lines[0].replace('TITLE:', '').replace('#', '').strip()\n    if len(lines) > 1: subtitle = lines[1].replace('SUBTITLE:', '').replace('#', '').strip()\n\ncontent_paras = paragraphs[1:-1] if len(paragraphs) > 2 else paragraphs\nsep = chr(10)\nnumbered = (sep+sep).join('PARAGRAPH ' + str(i+1) + ':' + sep + p for i, p in enumerate(content_paras))\nprint(json.dumps({'title':title,'subtitle':subtitle,'paragraphCount':len(paragraphs),'imagesNeeded':len(content_paras),'numberedParagraphs':numbered}))\n`;\n\nconst pyPath = path.join(dir, '_read_excel_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\nlet result = '';\ntry {\n  result = execSync(`python3 \"${pyPath}\" \"${excelPath}\"`, { encoding: 'utf8', timeout: 30000 });\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\nreturn [{ json: JSON.parse(result.trim()) }];"
       },
-      "id": "b2c3d4e5-f6a7-8901-bcde-readexcelpara1",
+      "id": "1bebc136-284f-4f4c-944a-88ac657bb54b",
       "name": "📖 Read Paragraphs from Excel",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1200,
-        200
+        -1264,
+        272
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nif (!fs.existsSync(excelPath)) throw new Error('script_editor.xlsx not found: ' + excelPath);\n\nconst pyCode = `\nimport openpyxl, os, json, sys\nfrom openpyxl.worksheet.datavalidation import DataValidation\nexcel_path = sys.argv[1]\nimg_dir    = sys.argv[2]\nwb = openpyxl.load_workbook(excel_path)\nws = wb['Script Editor']\nTEXT_COL   = 1\nIMAGE_COL  = 2\nDATA_START = 4\ndata_rows = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        data_rows.append(row[0].row)\nn = len(data_rows)\nfor i, row_num in enumerate(data_rows):\n    ws.cell(row=row_num, column=IMAGE_COL).value = 0 if (i == 0 or i == n-1) else i\ngen_images = sorted(\n    [f.replace('.jpeg','') for f in os.listdir(img_dir)\n     if f.startswith('image') and f.endswith('.jpeg') and f != 'image0.jpeg'],\n    key=lambda x: int(x.replace('image','')) if x.replace('image','').isdigit() else 9999\n)\nif 'Image Reference' in wb.sheetnames:\n    ref_ws = wb['Image Reference']\n    for row in ref_ws.iter_rows(min_row=2):\n        for cell in row: cell.value = None\n    for idx, name in enumerate(gen_images):\n        ref_ws.cell(row=idx+2, column=1).value = int(name.replace('image',''))\n        ref_ws.cell(row=idx+2, column=2).value = name + '.jpeg'\nws.data_validations.dataValidation = [\n    dv for dv in ws.data_validations.dataValidation if 'B' not in str(dv.sqref)\n]\nmax_img  = max([int(name.replace('image','')) for name in gen_images], default=0)\nnum_list = ','.join(str(x) for x in range(0, max_img+1))\ndv = DataValidation(type='list', formula1='\"' + num_list + '\"', allow_blank=True, showErrorMessage=False)\ndv.sqref = 'B' + str(DATA_START) + ':B' + str(data_rows[-1])\nws.add_data_validation(dv)\nwb.save(excel_path)\nprint(json.dumps({'success':True,'paragraphs':n,'images':len(gen_images)}))\n`;\n\nconst pyPath = path.join(dir, '_automap_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\nlet mapResult = '', mapError = '';\ntry {\n  mapResult = execSync(`python3 \"${pyPath}\" \"${excelPath}\" \"${dir}/images\"`,\n    { encoding: 'utf8', timeout: 30000 });\n} catch(e) {\n  mapError = (e.stderr || '') + ' ' + (e.message || '');\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\nif (mapError && !mapResult.includes('\"success\": true')) {\n  throw new Error('Auto-mapper failed: ' + mapError.slice(0, 300));\n}\nconst mapJson = JSON.parse(mapResult.trim());\nconsole.log('Images auto-mapped: ' + mapJson.images + ' images, ' + mapJson.paragraphs + ' paragraphs');\nreturn [{ json: mapJson }];"
       },
-      "id": "c3d4e5f6-a7b8-9012-cdef-automapimgs01",
+      "id": "04ba7caf-9032-4265-aba1-0af07c6d24f2",
       "name": "✅ Auto-map Images to Excel",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        200,
-        200
+        -256,
+        288
       ]
     }
   ],
-  "pinData": {},
   "connections": {
+    "🐍 Run: script_to_excel.py": {
+      "main": [
+        [
+          {
+            "node": "✅ Check Excel Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🐍 Run: excel_to_video.py": {
+      "main": [
+        [
+          {
+            "node": "🎬 Run: generate_video_different_images.py",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎬 Run: generate_video_different_images.py": {
+      "main": [
+        [
+          {
+            "node": "🔍 Check Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Check Video Output": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Script for Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "📂 Find Video & Load Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎨 OpenAI: Generate Image Prompts1": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Parse & Flatten Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Parse & Flatten Prompts1": {
+      "main": [
+        [
+          {
+            "node": "💾 Save Image to Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Daily Schedule (7AM IST)1": {
+      "main": [
+        [
+          {
+            "node": "📖 Read Paragraphs from Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Script for Metadata": {
+      "main": [
+        [
+          {
+            "node": "🎬 Generate YouTube Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎬 Generate YouTube Metadata": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "💾 Save pipeline_meta.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "📋 Form - Enter Topic1": {
       "main": [
         [
@@ -772,154 +867,11 @@
         ]
       ]
     },
-    "🐍 Run: script_to_excel.py": {
-      "main": [
-        [
-          {
-            "node": "✅ Check Excel Created",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "▶️ Stage 2: Generate Images & Video": {
-      "main": [
-        [
-          {
-            "node": "📖 Read Paragraphs from Excel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📖 Read Paragraphs from Excel": {
-      "main": [
-        [
-          {
-            "node": "🎨 OpenAI: Generate Image Prompts1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎨 OpenAI: Generate Image Prompts1": {
-      "main": [
-        [
-          {
-            "node": "⚙️ Parse & Flatten Prompts1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "⚙️ Parse & Flatten Prompts1": {
-      "main": [
-        [
-          {
-            "node": "💾 Save Image to Disk1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "💾 Save Image to Disk1": {
-      "main": [
-        [
-          {
-            "node": "✅ Auto-map Images to Excel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "✅ Auto-map Images to Excel": {
+    "⏰ Daily Schedule (7AM IST)2": {
       "main": [
         [
           {
             "node": "🐍 Run: excel_to_video.py",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🐍 Run: excel_to_video.py": {
-      "main": [
-        [
-          {
-            "node": "🎬 Run: generate_video_different_images.py",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎬 Run: generate_video_different_images.py": {
-      "main": [
-        [
-          {
-            "node": "🔍 Check Video Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🔍 Check Video Output": {
-      "main": [
-        [
-          {
-            "node": "📖 Read Script for Metadata",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "📖 Read Script for Metadata": {
-      "main": [
-        [
-          {
-            "node": "🎬 Generate YouTube Metadata",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎬 Generate YouTube Metadata": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code in JavaScript": {
-      "main": [
-        [
-          {
-            "node": "💾 Save pipeline_meta.json",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "💾 Save pipeline_meta.json": {
-      "main": [
-        [
-          {
-            "node": "📂 Find Video & Load Metadata",
             "type": "main",
             "index": 0
           }
@@ -931,17 +883,6 @@
         [
           {
             "node": "Code in JavaScript1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code in JavaScript1": {
-      "main": [
-        [
-          {
-            "node": "📤 YouTube: Upload Video",
             "type": "main",
             "index": 0
           }
@@ -991,18 +932,53 @@
           }
         ]
       ]
+    },
+    "💾 Save pipeline_meta.json": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "📤 YouTube: Upload Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save Image to Disk1": {
+      "main": [
+        [
+          {
+            "node": "✅ Auto-map Images to Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Read Paragraphs from Excel": {
+      "main": [
+        [
+          {
+            "node": "🎨 OpenAI: Generate Image Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Auto-map Images to Excel": {
+      "main": [
+        []
+      ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
-  },
-  "versionId": "86c7f71a-eb44-4ca2-b549-af1d94124094",
+  "pinData": {},
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "c0bf29310e1e28c20b170e842a09c3302c78d05f4d68fb0c213f047fe22fc555"
-  },
-  "id": "QtzMWbsdwUOaUbWA",
-  "tags": []
+  }
 }
