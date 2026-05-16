@@ -49,43 +49,41 @@ def thin_border(color=CLR_BORDER):
 
 def parse_paragraphs(filepath: str) -> list[dict]:
     """
-    Heading-mode  : lines starting with # begin a new section.
-    Blank-line mode: blank-line separated blocks, titled Para 1, Para 2 …
+    Handles the standard script format:
+      - One # title line at the top  → becomes the first row (image0 / thumbnail)
+      - Blank-line-separated paragraphs below the title → one row each
+
+    Falls back to pure blank-line mode if no # heading is found.
     Returns list of {"title": str, "body": str}.
     """
     with open(filepath, encoding="utf-8") as f:
         raw = f.read()
 
-    has_headings = any(ln.lstrip().startswith("#") for ln in raw.splitlines())
     sections = []
+    title_line = None
+    body_lines = []
+    title_seen = False
 
-    if has_headings:
-        lines = raw.split("\n")
-        cur_title, cur_body = None, []
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            if line.startswith("#"):
-                if cur_title:
-                    body = " ".join(cur_body).strip()
-                    if body:
-                        sections.append({"title": cur_title, "body": body})
-                cur_title = re.sub(r"^#+\s*", "", line).strip()
-                cur_body = []
-            else:
-                if cur_title is None:
-                    cur_title = "Introduction"
-                cur_body.append(line)
-        if cur_title and cur_body:
-            body = " ".join(cur_body).strip()
-            if body:
-                sections.append({"title": cur_title, "body": body})
-    else:
-        blocks = [b.strip() for b in re.split(r"\n\s*\n", raw) if b.strip()]
-        for i, block in enumerate(blocks, 1):
-            lines_txt = [ln.strip() for ln in block.splitlines() if ln.strip()]
-            sections.append({"title": f"Para {i}", "body": " ".join(lines_txt)})
+    for line in raw.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("#") and title_line is None:
+            title_line = re.sub(r"^#+\s*", "", stripped).strip()
+            title_seen = True
+        elif title_seen:
+            body_lines.append(line)
+        # lines before the first # heading are silently skipped
+
+    # Split body into paragraphs by blank lines
+    body_text = "\n".join(body_lines)
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", body_text) if b.strip()]
+
+    if title_line:
+        # First row = video title (maps to image0 / thumbnail)
+        sections.append({"title": "Title", "body": title_line})
+
+    for i, block in enumerate(blocks, 1):
+        lines_txt = [ln.strip() for ln in block.splitlines() if ln.strip()]
+        sections.append({"title": f"Para {i}", "body": " ".join(lines_txt)})
 
     return sections
 
@@ -94,8 +92,8 @@ def parse_paragraphs(filepath: str) -> list[dict]:
 
 def build_excel(sections: list[dict], output_path: str):
     n        = len(sections)
-    # image0…image(n-2) are unique; last para reuses image0 → n-1 distinct images
-    n_imgs   = max(n - 1, 1)
+    # each para gets its own image: image0 (thumbnail/title) … image(n-1) (concluding)
+    n_imgs   = n
     max_img  = n_imgs - 1
     dropdown_str = ",".join(str(i) for i in range(n_imgs))
 
@@ -163,8 +161,8 @@ def build_excel(sections: list[dict], output_path: str):
         a.alignment = Alignment(wrap_text=True, vertical="top")
         a.border    = thin_border()
 
-        # Col B – para_idx maps 1:1 to image number; last para wraps back to image0
-        auto_img = para_idx if para_idx < n - 1 else 0
+        # Col B – each para gets its own image; last para gets its own concluding image
+        auto_img = para_idx
         b = ws.cell(row=row, column=2, value=auto_img)
         b.font      = Font(name="Arial", bold=True, size=12, color="7F3F00")
         b.fill      = PatternFill("solid", fgColor=CLR_IMG_FILLED)
@@ -315,8 +313,8 @@ OTP यानी One Time Password एक सुरक्षा कोड हो
     n = len(sections)
     print(f"  ✅  Excel created : {args.out}")
     print(f"      Paragraphs    : {n}")
-    print(f"      Image numbers : 0–{n-2}  (image0.jpeg … image{n-2}.jpeg, last para → image0)")
-    print(f"      Col B         : auto-assigned para_idx → image_idx, last para = image0")
+    print(f"      Image numbers : 0–{n-1}  (image0=thumbnail, image{n-1}=concluding happy image)")
+    print(f"      Col B         : auto-assigned para_idx → image_idx (image0=thumbnail, image{n-1}=concluding)")
     print()
     print("  Next steps:")
     print(f"    1. Open {args.out}")

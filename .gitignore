@@ -1,11 +1,13 @@
 # Secrets
 .openai_key
+.abacus_key
 config.json
 *.env
 .env*
 client_secrets.json
 mcp/configs/youtube_token.json
 mcp/configs/gdrive_token.json
+youtube_token.json
 
 # Generated pipeline outputs
 script.md

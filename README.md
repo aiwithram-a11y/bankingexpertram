@@ -26,10 +26,11 @@ WF4: n8n uploads video to YouTube + sets thumbnail (image0.jpeg)
 | Component | Tool |
 |-----------|------|
 | Orchestration | n8n (self-hosted) |
-| Script writing | Claude claude-opus-4-6 (Anthropic) |
-| Image generation | DALL-E 3 (OpenAI) |
+| Script writing | Claude Sonnet 4.6 via **Abacus.AI** |
+| Image prompt gen | Claude Sonnet 4.6 via **Abacus.AI** |
+| Image generation | GPT Image 1.5 via **Abacus.AI** |
+| YouTube metadata | Claude Sonnet 4.6 via **Abacus.AI** |
 | Hindi TTS | Sarvam AI `bulbul:v3` — `shubh` voice |
-| YouTube metadata | GPT-4.1-mini (OpenAI) |
 | Video assembly | FFmpeg + Pillow/Playwright |
 | Upload | YouTube Data API v3 via n8n |
 
@@ -55,18 +56,19 @@ brew install ffmpeg
 
 ### 2. API Keys
 
-Create `.openai_key` in the project folder:
+Create `.abacus_key` in the project folder:
 ```
-sk-your-openai-key-here
+s2_your-abacus-key-here
 ```
+Get your key at: abacus.ai → Profile → API Key
 
 ### 3. n8n
 
 - Self-hosted n8n at `localhost:5678`
 - Import `bankingexpertram_workflow.json`
 - Set environment variable in n8n:  
-  `BANKING_EXPERT_DIR=/Users/yourname/Desktop/bankingexpertram`
-- Add credentials: Anthropic API, OpenAI API, Sarvam AI, YouTube OAuth2
+  `BANKING_EXPERT_DIR=/Users/yourname/Desktop/bankingexpertram_abacus`
+- Add credentials: YouTube OAuth2 (Anthropic + OpenAI credentials no longer needed)
 
 ### 4. Images folder
 

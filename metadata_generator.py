@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
 metadata_generator.py
-Generates YouTube title, description, and tags from a script file using OpenAI.
-Usage: python3 metadata_generator.py <script_path> <openai_api_key>
+Generates YouTube title, description, and tags from a script file using Abacus.AI.
+Usage: python3 metadata_generator.py <script_path> <abacus_api_key>
 """
 import sys
 import json
-import urllib.request
 import traceback
 
 
@@ -63,33 +62,19 @@ def main():
         script,
     ])
 
-    payload = json.dumps({
-        "model": "gpt-4.1-mini",
-        "max_tokens": 2000,
-        "temperature": 0.7,
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": user_prompt},
-        ],
-    }).encode("utf-8")
-
     try:
-        req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-            method="POST",
+        from abacusai import ApiClient
+        client = ApiClient(api_key)
+
+        resp = client.evaluate_prompt(
+            system_message=system_msg,
+            prompt=user_prompt,
+            llm_name="CLAUDE_V4_6_SONNET",
+            max_tokens=2000,
+            temperature=0.7,
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
 
-        if "error" in body:
-            raise ValueError(f"OpenAI error: {json.dumps(body['error'])}")
-
-        raw = body["choices"][0]["message"]["content"]
+        raw = resp.content
 
         title = extract(raw, "##TITLE##", "##END_TITLE##")
         description = extract(raw, "##DESCRIPTION##", "##END_DESCRIPTION##")
