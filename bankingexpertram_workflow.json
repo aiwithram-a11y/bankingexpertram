@@ -4,65 +4,65 @@
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(\n    'cd \"/Users/ramdudeja/Desktop/bankingexpertram_abacus\" && python3 script_to_excel.py 2>&1',\n    {\n      encoding: 'utf8',\n      timeout: 300000,\n      shell: '/bin/bash'\n    }\n  );\n} catch(e) {\n  stdout   = e.stdout  || '';\n  stderr   = e.stderr  || e.message || '';\n  exitCode = e.status  || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
       },
-      "id": "6eeee7da-9094-4d90-aaee-8d7b12a5879f",
+      "id": "c42f5b6f-bdf4-4289-a7c6-14fc961ab974",
       "name": "🐍 Run: script_to_excel.py",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -48,
-        -32
+        -640,
+        2864
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\n// ── Hardcoded path ────────────────────────────────────────────────────────────\nconst dir       = '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nconst stdout    = $input.first().json.stdout || '';\nconst stderr    = $input.first().json.stderr || '';\n\nif (!fs.existsSync(excelPath)) {\n  throw new Error(`script_to_excel.py failed.\\nstdout: ${stdout}\\nstderr: ${stderr}`);\n}\n\nconst pyCode = `\nimport openpyxl, os, json, sys\nfrom openpyxl.worksheet.datavalidation import DataValidation\n\nexcel_path = sys.argv[1]\nimg_dir    = sys.argv[2]\n\nwb = openpyxl.load_workbook(excel_path)\nws = wb['Script Editor']\n\nTEXT_COL   = 1\nIMAGE_COL  = 2\nDATA_START = 4\n\ndata_rows = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        data_rows.append(row[0].row)\n\nn = len(data_rows)\nprint(f\"Script rows found: {n}\", file=sys.stderr)\n\nif n < 2:\n    print(json.dumps({\"success\": False, \"reason\": \"too few rows\", \"paragraphs\": n}))\n    sys.exit(0)\n\nfor i, row_num in enumerate(data_rows):\n    ws.cell(row=row_num, column=IMAGE_COL).value = i\n\ngen_images = sorted(\n    [f.replace('.jpeg','') for f in os.listdir(img_dir)\n     if f.startswith('image') and f.endswith('.jpeg') and f != 'image0.jpeg'],\n    key=lambda x: int(x.replace('image','')) if x.replace('image','').isdigit() else 9999\n)\n\nif 'Image Reference' in wb.sheetnames:\n    ref_ws = wb['Image Reference']\n    for row in ref_ws.iter_rows(min_row=2):\n        for cell in row:\n            cell.value = None\n    for idx, name in enumerate(gen_images):\n        ref_ws.cell(row=idx+2, column=1).value = int(name.replace('image',''))\n        ref_ws.cell(row=idx+2, column=2).value = name + '.jpeg'\n\nws.data_validations.dataValidation = [\n    dv for dv in ws.data_validations.dataValidation\n    if 'B' not in str(dv.sqref)\n]\n\nmax_img  = max([int(name.replace('image','')) for name in gen_images], default=0)\nnum_list = ','.join(str(x) for x in range(0, max_img + 1))\ndv = DataValidation(\n    type='list',\n    formula1='\"' + num_list + '\"',\n    allow_blank=True,\n    showErrorMessage=False\n)\nlast_row = data_rows[-1]\ndv.sqref = f'B{DATA_START}:B{last_row}'\nws.add_data_validation(dv)\n\nwb.save(excel_path)\nprint(json.dumps({\n    \"success\":         True,\n    \"paragraphs\":      n,\n    \"images_assigned\": n,\n    \"first_row\":       0,\n    \"last_row\":        0,\n    \"middle\":          f\"1 to {n-2}\" if n > 2 else \"none\"\n}))\n`;\n\nconst pyPath = path.join(dir, '_auto_mapper_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\n\nlet mapResult = '', mapError = '';\ntry {\n  mapResult = execSync(\n    `python3 \"${pyPath}\" \"${excelPath}\" \"${dir}\"`,\n    { encoding: 'utf8', timeout: 30000 }\n  );\n} catch (e) {\n  mapError = (e.stderr || '') + '\\n' + (e.message || '');\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\n\nif (mapError && !mapResult.includes('\"success\": true')) {\n  throw new Error(`Auto-mapper failed:\\n${mapError}`);\n}\n\nlet mapJson = {};\ntry { mapJson = JSON.parse(mapResult.trim()); } catch(_) {}\n\nconst stats = fs.statSync(excelPath);\nreturn [{ json: {\n  excelPath,\n  excelSizeKb:  Math.round(stats.size / 1024),\n  autoMap:      mapJson,\n  autoMapError: mapError.trim().slice(-300),\n  createdAt:    new Date().toISOString()\n} }];"
       },
-      "id": "6ca8a5cc-3755-499a-8cd6-acc8dfd40916",
+      "id": "626ddbd8-705e-4dd3-9c5d-0065d948f6f4",
       "name": "✅ Check Excel Created",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        112,
-        -32
+        -480,
+        2864
       ]
     },
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(`cd \"${dir}\" && python3 excel_to_video.py 2>&1`, {\n    encoding: 'utf8',\n    timeout: 300000,\n    shell: '/bin/bash'\n  });\n} catch(e) {\n  stdout = e.stdout || '';\n  stderr = e.stderr || e.message || '';\n  exitCode = e.status || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
       },
-      "id": "0c4b73e0-ad3c-4980-8e58-0f1f0749e341",
+      "id": "77b1eb91-f13e-4fc7-80f0-a9800034f430",
       "name": "🐍 Run: excel_to_video.py",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1536,
-        512
+        -2128,
+        3408
       ]
     },
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\nlet stdout = '', stderr = '', exitCode = 0;\ntry {\n  stdout = execSync(`cd \"${dir}\" && python3 video_generator.py --article revised_script.md --image-map script_editor.xlsx 2>&1`, {\n    encoding: 'utf8',\n    timeout: 300000,\n    shell: '/bin/bash'\n  });\n} catch(e) {\n  stdout = e.stdout || '';\n  stderr = e.stderr || e.message || '';\n  exitCode = e.status || 1;\n  if (exitCode !== 0) throw new Error(`Command failed (exit ${exitCode}):\\n${stderr || stdout}`);\n}\nreturn [{ json: { stdout, stderr, exitCode } }];"
       },
-      "id": "8b71d224-f0b5-46c5-8795-433f5642c157",
+      "id": "debd30a2-8bc1-453a-b13f-2cde4507e430",
       "name": "🎬 Run: generate_video_different_images.py",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1344,
-        512
+        -1936,
+        3408
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir    = rawDir.split(',')[0].trim();\nconst imgDir = path.join(dir, 'images');\nconst stdout = $input.first().json.stdout || '';\nconst stderr = $input.first().json.stderr || '';\n\nlet videoPath = null;\n\n// 1. Path printed in script stdout\nconst m = stdout.match(/File\\s*:\\s*(.+\\.mp4)/);\nif (m) { const fp = m[1].trim(); if (fs.existsSync(fp)) videoPath = fp; }\n\n// 2. Flat candidates in root\nif (!videoPath) {\n  for (const name of ['final_video.mp4','output_video.mp4','rrnews_video.mp4','video.mp4']) {\n    const fp = path.join(dir, name);\n    if (fs.existsSync(fp)) { videoPath = fp; break; }\n  }\n}\n\n// 3. Newest output_* subdirectory\nif (!videoPath) {\n  const subs = fs.readdirSync(dir)\n    .filter(e => e.startsWith('output_'))\n    .sort().reverse();\n  outer: for (const sub of subs) {\n    const subPath = path.join(dir, sub);\n    if (!fs.statSync(subPath).isDirectory()) continue;\n    for (const name of ['final_video.mp4','output_video.mp4','video.mp4']) {\n      const fp = path.join(subPath, name);\n      if (fs.existsSync(fp)) { videoPath = fp; break outer; }\n    }\n  }\n}\n\nif (!videoPath) throw new Error(\n  `Video not found.\\nstdout: ${stdout.slice(-500)}\\nstderr: ${stderr.slice(-300)}`\n);\n\nconst videoSizeMb   = Math.round(fs.statSync(videoPath).size / (1024*1024) * 10) / 10;\nconst thumbnailPath = path.join(imgDir, 'image0.jpeg');   // ← images/ subdir\nconst hasThumbnail  = fs.existsSync(thumbnailPath);\n\nreturn [{ json: {\n  videoPath,\n  videoSizeMb,\n  thumbnailPath,\n  hasThumbnail,\n  generatedAt: new Date().toISOString(),\n  genOutput: stdout.slice(-300)\n} }];"
       },
-      "id": "3f33dda8-f56e-4ac1-b166-d68241b05184",
+      "id": "bf0118f3-038b-4514-91a2-15c801522a27",
       "name": "🔍 Check Video Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1184,
-        512
+        -1776,
+        3408
       ]
     },
     {
@@ -70,36 +70,36 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1696,
-        816
+        -2288,
+        3712
       ],
-      "id": "1acb2c8b-8473-49f5-9f54-336a88f5b489",
+      "id": "893ab9e9-c345-4e87-a716-7849152b173a",
       "name": "When clicking 'Execute workflow'"
     },
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs'), path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\n\nconst keyPath = path.join(dir, '.abacus_key');\nif (!fs.existsSync(keyPath)) throw new Error('.abacus_key not found at: ' + keyPath);\nconst abacusKey = fs.readFileSync(keyPath, 'utf8').trim();\n\nconst imagesNeeded = $input.first().json.imagesNeeded || 4;\nconst numberedParagraphs = $input.first().json.numberedParagraphs || '';\n\n// Write paragraphs to temp file to avoid shell escaping issues\nconst tmpInput  = path.join(dir, '_imgprompt_input.txt');\nconst tmpOutput = path.join(dir, '_imgprompt_output.json');\nfs.writeFileSync(tmpInput, numberedParagraphs, 'utf8');\n\nconst generatorPath = path.join(dir, 'abacus_image_prompt_gen.py');\nif (!fs.existsSync(generatorPath)) throw new Error('abacus_image_prompt_gen.py not found');\n\nlet result = '', runError = '';\ntry {\n  result = execSync(\n    `python3 \"${generatorPath}\" \"${abacusKey}\" \"${imagesNeeded}\" \"${tmpInput}\" \"${tmpOutput}\"`,\n    { encoding: 'utf8', timeout: 90000, shell: '/bin/bash' }\n  );\n} catch(e) {\n  runError = e.stderr || e.message || '';\n  result   = e.stdout || '';\n} finally {\n  try { fs.unlinkSync(tmpInput); } catch(_) {}\n}\n\nlet parsed = {};\ntry { parsed = JSON.parse(result.trim()); }\ncatch(_) { throw new Error('Image prompt gen parse failed: ' + result.slice(-300)); }\n\nif (!parsed.success) throw new Error('Image prompt gen failed: ' + parsed.error);\n\n// Format as expected by Parse & Flatten Prompts node\nconst message = {\n  content: JSON.stringify(parsed.prompts)\n};\nreturn [{ json: { message, content: JSON.stringify(parsed.prompts), prompts: parsed.prompts } }];"
       },
-      "id": "976da13e-d808-4146-991e-12fa966fc919",
+      "id": "23d22485-c658-43db-95eb-da1c788fa811",
       "name": "🎨 Abacus.AI: Generate Image Prompts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1056,
-        272
+        -1648,
+        3168
       ]
     },
     {
       "parameters": {
         "jsCode": "// prompts array comes directly from abacus_image_prompt_gen.py output\nconst data = $input.first().json;\nconst promptsData = data.prompts || [];\n\nif (!promptsData.length) throw new Error('No prompts found in input: ' + JSON.stringify(data).slice(0, 300));\n\n// image1, image2, ... (image0 is the thumbnail, generated separately)\nconst flat = promptsData.map((item, idx) => ({\n  news_index: idx + 1,\n  headline: `Story ${idx + 1}`,\n  prompt: typeof item === 'string' ? item : (item.prompt || item.text || ''),\n  filename: `image${idx + 1}.jpeg`,\n  imageIndex: idx + 1,\n  is_thumbnail: false\n}));\n\nreturn flat.map(f => ({ json: f }));"
       },
-      "id": "0ee932e8-5fd1-42a7-9688-61807e23674e",
+      "id": "47515872-ca6a-4299-9dab-464fcc8d585e",
       "name": "⚙️ Parse & Flatten Prompts1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -752,
-        272
+        -1344,
+        3168
       ]
     },
     {
@@ -113,13 +113,13 @@
           ]
         }
       },
-      "id": "74b6a1a5-fa3b-48a1-9000-698305119609",
+      "id": "ac389c84-aa0b-4a0f-b617-432a6f32d6ef",
       "name": "⏰ Daily Schedule (7AM IST)1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1600,
-        272
+        -2096,
+        3168
       ]
     },
     {
@@ -129,10 +129,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1024,
-        512
+        -1616,
+        3408
       ],
-      "id": "9a31038f-4570-4011-9b17-df65ee55c5ef",
+      "id": "7dd89b6d-d499-4fcf-8550-7a4b6c2f1379",
       "name": "📖 Read Script for Metadata"
     },
     {
@@ -142,10 +142,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -816,
-        512
+        -1408,
+        3408
       ],
-      "id": "31f84b55-0fa3-4c82-886d-af66a6585db2",
+      "id": "a9dd1dd0-7efd-470e-8117-64c6bbedc764",
       "name": "🎬 Generate YouTube Metadata"
     },
     {
@@ -155,10 +155,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -640,
-        528
+        -1232,
+        3424
       ],
-      "id": "1523df07-d116-4087-ba4d-eed2c82b6706",
+      "id": "455fbb87-0368-4ea4-8dc2-80d37e295272",
       "name": "Code in JavaScript"
     },
     {
@@ -168,13 +168,13 @@
         "completionMessage": "={{ $json.script }}",
         "options": {}
       },
-      "id": "8b0c5212-90fb-45bc-9ecd-26577c1eac66",
+      "id": "edea3d63-fe05-4d16-a21d-f0d305a055c4",
       "name": "📤 Form - Show Success",
       "type": "n8n-nodes-base.form",
       "typeVersion": 2.5,
       "position": [
-        -32,
-        -224
+        -624,
+        2672
       ],
       "webhookId": "696f6db7-7090-4799-8582-6cb401552a09",
       "alwaysOutputData": false
@@ -186,13 +186,13 @@
         "completionMessage": "There is some error and the script is not generated!",
         "options": {}
       },
-      "id": "928e4df6-4d14-40ce-be2a-4ba4c530fafe",
+      "id": "b4f6e6a3-054d-43a1-aa64-92aa822e29d3",
       "name": "❌ Form - Show Error",
       "type": "n8n-nodes-base.form",
       "typeVersion": 2.5,
       "position": [
-        -624,
-        16
+        -1216,
+        2912
       ],
       "webhookId": "696f6db7-7090-4799-8582-6cb401552a09"
     },
@@ -229,15 +229,15 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "bff67415-6608-43d6-bf7f-da18bf8df3c7",
+      "id": "8067ccf3-8716-4bd8-82b2-8ca930591400",
       "name": "📋 Form - Enter Topic1",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
       "position": [
-        -1696,
-        -112
+        -2288,
+        2784
       ],
-      "webhookId": "2fe91d3b-4d70-42c9-a841-3250b4c4fbce"
+      "webhookId": "69cb507b-532c-4437-a9a1-2fb0203d9cb3"
     },
     {
       "parameters": {
@@ -265,25 +265,25 @@
         },
         "options": {}
       },
-      "id": "63a7e5ae-6d32-4fbe-948b-b51984913012",
+      "id": "e446b485-46ce-4fbd-8a0a-c1f9738795e9",
       "name": "📌 Set - Extract Input Params",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1408,
-        -112
+        -2000,
+        2784
       ]
     },
     {
       "parameters": {
         "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs'), path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\n\nconst topic = $input.first().json.topic || $input.first().json.videoTopic || '';\nif (!topic) throw new Error('No topic provided');\n\nconst keyPath = path.join(dir, '.abacus_key');\nif (!fs.existsSync(keyPath)) throw new Error('.abacus_key not found at: ' + keyPath);\nconst abacusKey = fs.readFileSync(keyPath, 'utf8').trim();\n\nconst scriptGenPath = path.join(dir, 'abacus_script_gen.py');\nif (!fs.existsSync(scriptGenPath)) throw new Error('abacus_script_gen.py not found');\n\nlet result = '', runError = '';\ntry {\n  result = execSync(\n    `python3 \"${scriptGenPath}\" ${JSON.stringify(topic)} \"${abacusKey}\"`,\n    { encoding: 'utf8', timeout: 120000, shell: '/bin/bash' }\n  );\n} catch(e) {\n  runError = e.stderr || e.message || '';\n  result   = e.stdout || '';\n}\n\nlet parsed = {};\ntry {\n  parsed = JSON.parse(result.trim());\n} catch(_) {\n  throw new Error('Script gen parse failed. stdout: ' + result.slice(-400) + ' stderr: ' + runError.slice(-300));\n}\n\nif (!parsed.success) {\n  throw new Error('Script generation failed: ' + parsed.error);\n}\n\nreturn [{ json: {\n  content: [{ text: parsed.script }],\n  script: parsed.script,\n  model: parsed.model,\n  tokens: parsed.tokens,\n} }];"
       },
-      "id": "c18994ae-7f8b-4ea2-987d-f9158df2fd61",
+      "id": "35c9bddb-2a7a-43ca-a572-3a4ee144bce0",
       "name": "🤖 Claude API - Generate Script",
       "type": "n8n-nodes-base.code",
       "position": [
-        -1200,
-        -112
+        -1792,
+        2784
       ],
       "typeVersion": 2
     },
@@ -311,39 +311,39 @@
         },
         "options": {}
       },
-      "id": "3dffb807-d60f-4dc6-9111-9f797ca73c0d",
+      "id": "7df42844-7d09-4d29-89d0-995057a9d840",
       "name": "✅ IF - API Success?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -880,
-        -112
+        -1472,
+        2784
       ]
     },
     {
       "parameters": {
         "jsCode": "const response = $input.first().json;\nconst rawScript = (response.script || response.content[0].text || '').trim();\n\n// Extract title from # heading (abacus_script_gen.py always puts one)\nconst lines = rawScript.split('\\n');\nlet title    = 'Cyber Fraud Alert';\nlet subtitle = '';\n\nfor (const line of lines) {\n  const s = line.trim();\n  if (s.startsWith('#') && title === 'Cyber Fraud Alert') {\n    title = s.replace(/^#+\\s*/, '').trim();\n    break;\n  }\n}\n\n// Strip any old TITLE:/SUBTITLE: lines, keep everything else\nconst cleanedScript = rawScript\n  .split('\\n')\n  .filter(l => !l.trim().startsWith('TITLE:') && !l.trim().startsWith('SUBTITLE:'))\n  .join('\\n')\n  .trimStart();\n\nlet topic = title;\ntry {\n  const inp = $('📌 Set - Extract Input Params').first().json;\n  topic = inp.topic || inp.videoTopic || title;\n} catch(e) {}\n\nconst wordCount        = cleanedScript.split(/\\s+/).length;\nconst estimatedMinutes = Math.round(wordCount / 130);\nconst timestamp        = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);\n\nreturn [{\n  json: {\n    script:            cleanedScript,\n    topic:             topic,\n    title:             title,\n    subtitle:          subtitle,\n    timestamp:         timestamp,\n    wordCount:         wordCount,\n    estimatedDuration: estimatedMinutes + ' minutes',\n    filename:          'script.md',\n  }\n}];\n"
       },
-      "id": "5cee836d-0237-4575-9085-14a1d86f2b71",
+      "id": "b6d7f0f2-7385-4aff-b180-928c1c2884f8",
       "name": "⚙️ Code - Parse Script & Extract Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -608,
-        -224
+        -1200,
+        2672
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst script = $input.first().json.script;\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\nconst targetPath = path.join(dir, 'script.md');\n\nfs.mkdirSync(path.dirname(targetPath), { recursive: true });\nfs.writeFileSync(targetPath, script, 'utf8');\n\nconst fileSize = fs.statSync(targetPath).size;\n\nreturn [{\n  json: {\n    stdout: JSON.stringify({\n      saved: true,\n      path: targetPath,\n      size_bytes: fileSize\n    })\n  }\n}];"
       },
-      "id": "6b99d687-f0e8-48d5-8ddb-543dadddf1a9",
+      "id": "2cb14a9b-6fae-4dc3-914a-56315fba1e01",
       "name": "💾 Execute - Save script.md",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -400,
-        -224
+        -992,
+        2672
       ]
     },
     {
@@ -402,13 +402,13 @@
         },
         "options": {}
       },
-      "id": "5de96e81-e00e-495e-b522-bf8d72e74e56",
+      "id": "1dda355c-f428-430b-93bc-d743c7e19ceb",
       "name": "📦 Set - Prepare Final Output",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -224,
-        -224
+        -816,
+        2672
       ]
     },
     {
@@ -422,95 +422,91 @@
           ]
         }
       },
-      "id": "d5a3c549-10c2-4e71-9c59-62e3658c34b6",
+      "id": "3b593173-be33-4151-b47f-ea4bd1042924",
       "name": "⏰ Daily Schedule (7AM IST)2",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1760,
-        496
+        -2352,
+        3392
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\n\n// Always use output_v19/final_video.mp4 as the primary target\nconst primaryPath = path.join(dir, 'output_v19', 'final_video.mp4');\nlet videoPath = fs.existsSync(primaryPath) ? primaryPath : null;\n\n// Fallback: scan subdirectories only if primary not found\nif (!videoPath) {\n  const entries = fs.readdirSync(dir)\n    .filter(e => fs.statSync(path.join(dir, e)).isDirectory())\n    .sort().reverse();\n  outer: for (const sub of entries) {\n    for (const name of ['final_video.mp4', 'output_video.mp4', 'video.mp4']) {\n      const fp = path.join(dir, sub, name);\n      if (fs.existsSync(fp)) { videoPath = fp; break outer; }\n    }\n  }\n}\n\nif (!videoPath) throw new Error(`No video file found. Expected: ${primaryPath}`);\n\nconst metaPath = path.join(dir, 'pipeline_meta.json');\nif (!fs.existsSync(metaPath)) throw new Error(`pipeline_meta.json not found at ${metaPath}`);\n\nconst meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));\nif (!meta.title) throw new Error('title missing in pipeline_meta.json');\n\nconst videoSizeMb = Math.round(fs.statSync(videoPath).size / (1024 * 1024) * 10) / 10;\nconsole.log(`✅ Video found: ${videoPath} (${videoSizeMb} MB)`);\nconsole.log(`✅ Title: ${meta.title}`);\n\nreturn [{ json: {\n  videoPath,\n  videoSizeMb,\n  youtubeTitle:       meta.title,\n  youtubeDescription: meta.description || '',\n  youtubeTags:        meta.tags || []\n} }];"
       },
-      "id": "f5e22bf0-ba75-4e45-98c0-231d796820bc",
+      "id": "eec48954-6667-470f-9f3b-ce8a8962ebe3",
       "name": "📂 Find Video & Load Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1456,
-        816
+        -2048,
+        3712
       ]
     },
     {
       "parameters": {
-        "jsCode": "const { execSync } = require('child_process');\nconst fs   = require('fs');\nconst path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir    = rawDir.split(',')[0].trim();\n\nconst script = path.join(dir, 'youtube_upload.py');\nif (!fs.existsSync(script)) throw new Error('youtube_upload.py not found at: ' + script);\n\nlet stdout = '', stderr = '';\ntry {\n  stdout = execSync(\n    `python3 \"${script}\" --meta \"${path.join(dir, 'pipeline_meta.json')}\"`,\n    { encoding: 'utf8', timeout: 600000, shell: '/bin/bash' }\n  );\n} catch (e) {\n  stderr = (e.stderr || '') + '\\n' + (e.message || '');\n  stdout = e.stdout || '';\n}\n\n// Find the JSON result line (last non-empty line)\nconst lines  = stdout.trim().split('\\n').filter(l => l.trim());\nconst last   = lines[lines.length - 1] || '';\nlet parsed   = {};\ntry { parsed = JSON.parse(last); } catch(_) {}\n\nif (!parsed.success) {\n  throw new Error('YouTube upload failed:\\n' + (parsed.error || stderr || stdout).slice(0, 500));\n}\n\nreturn [{ json: {\n  videoId:  parsed.video_id,\n  videoUrl: parsed.url,\n  title:    parsed.title,\n  stdout:   stdout.slice(-800),\n} }];\n",
-        "mode": "runOnceForAllItems"
+        "jsCode": "const { execSync } = require('child_process');\nconst fs   = require('fs');\nconst path = require('path');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir    = rawDir.split(',')[0].trim();\n\nconst script = path.join(dir, 'youtube_upload.py');\nif (!fs.existsSync(script)) throw new Error('youtube_upload.py not found at: ' + script);\n\nlet stdout = '', stderr = '';\ntry {\n  stdout = execSync(\n    `python3 \"${script}\" --meta \"${path.join(dir, 'pipeline_meta.json')}\"`,\n    { encoding: 'utf8', timeout: 600000, shell: '/bin/bash' }\n  );\n} catch (e) {\n  stderr = (e.stderr || '') + '\\n' + (e.message || '');\n  stdout = e.stdout || '';\n}\n\n// Find the JSON result line (last non-empty line)\nconst lines  = stdout.trim().split('\\n').filter(l => l.trim());\nconst last   = lines[lines.length - 1] || '';\nlet parsed   = {};\ntry { parsed = JSON.parse(last); } catch(_) {}\n\nif (!parsed.success) {\n  throw new Error('YouTube upload failed:\\n' + (parsed.error || stderr || stdout).slice(0, 500));\n}\n\nreturn [{ json: {\n  videoId:  parsed.video_id,\n  videoUrl: parsed.url,\n  title:    parsed.title,\n  stdout:   stdout.slice(-800),\n} }];\n"
       },
-      "id": "aa0e3968-5b13-492a-9058-58c032ddc92b",
+      "id": "da7683f7-1cfc-468f-8917-91ed2afb2b61",
       "name": "📤 YouTube: Upload Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1104,
-        816
+        -1696,
+        3712
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Skipped — thumbnail handled by youtube_upload.py\nreturn $input.all();",
-        "mode": "runOnceForAllItems"
+        "jsCode": "// Skipped — thumbnail handled by youtube_upload.py\nreturn $input.all();"
       },
-      "id": "dc2f1e88-d168-41ef-9f5e-12b850058905",
+      "id": "33af8405-df5a-4bd5-81d6-5e01b2a635c9",
       "name": "📂 Read Thumbnail Path1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -976,
-        816
+        -1568,
+        3712
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Skipped — thumbnail handled by youtube_upload.py\nreturn $input.all();",
-        "mode": "runOnceForAllItems"
+        "jsCode": "// Skipped — thumbnail handled by youtube_upload.py\nreturn $input.all();"
       },
-      "id": "ea31d601-8011-43fe-a41b-a90d714e4426",
+      "id": "c8f740cd-05e1-476c-9978-ab6b5876f1ca",
       "name": "📂 Read image0.jpeg as Binary1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -832,
-        816
+        -1424,
+        3712
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Thumbnail already set by youtube_upload.py\nreturn $input.all();",
-        "mode": "runOnceForAllItems"
+        "jsCode": "// Thumbnail already set by youtube_upload.py\nreturn $input.all();"
       },
-      "id": "85a1c6f7-1c1d-4b3d-b2d7-c0718ccc92d0",
+      "id": "266f9f78-808e-417f-b4d8-e127b42d2381",
       "name": "🖼️ YouTube: Set Thumbnail",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -672,
-        816
+        -1264,
+        3712
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\n\n// FIX: Take only the first path if env var contains comma-separated values\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\n\nconst videoId = $('📤 YouTube: Upload Video').first().json.id || 'unknown';\nconst title   = $('📂 Find Video & Load Metadata').first().json.youtubeTitle || 'unknown';\n\nconst log = {\n  timestamp: new Date().toISOString(),\n  workflow:  'bankingexpertram',\n  status:    'SUCCESS',\n  stage:     'youtube_upload',\n  videoId,\n  title,\n  videoUrl:  `https://youtube.com/watch?v=${videoId}`\n};\n\nfs.appendFileSync(path.join(dir, 'pipeline_log.jsonl'), JSON.stringify(log) + '\\n');\nconsole.log(`✅ Video published: ${log.videoUrl}`);\nreturn [{ json: log }];"
       },
-      "id": "de449dc5-93e6-49c0-9ffb-4738e813f563",
+      "id": "3ed8984a-d4e9-490e-b172-e8d6ac2e85b2",
       "name": "✅ Log: Pipeline Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -496,
-        816
+        -1088,
+        3712
       ]
     },
     {
@@ -520,10 +516,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -464,
-        528
+        -1056,
+        3424
       ],
-      "id": "2374a9a9-6e44-4688-bdb7-9ddd56cfd8ff",
+      "id": "e8337390-0753-4443-9a1d-f33306d824b1",
       "name": "💾 Save pipeline_meta.json"
     },
     {
@@ -533,49 +529,49 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1280,
-        816
+        -1872,
+        3712
       ],
-      "id": "90c2d85c-67d9-45cf-9d29-9af530fcd64f",
+      "id": "c52249c6-b7c9-4df7-a996-2076ea4035b0",
       "name": "Code in JavaScript1"
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\nconst imgsDir = path.join(dir, 'images');\nif (!fs.existsSync(imgsDir)) fs.mkdirSync(imgsDir, { recursive: true });\n\n// Read Abacus.AI API key\nconst keyPath = path.join(dir, '.abacus_key');\nif (!fs.existsSync(keyPath)) throw new Error('.abacus_key not found at: ' + keyPath);\nconst abacusKey = fs.readFileSync(keyPath, 'utf8').trim();\n\nconst imageGenScript = path.join(dir, 'abacus_image_gen.py');\n\nfunction generateImage(prompt, filepath) {\n  const tmpPromptFile = filepath + '_prompt.txt';\n  fs.writeFileSync(tmpPromptFile, prompt, 'utf8');\n  try {\n    const output = execSync(\n      `python3 \"${imageGenScript}\" \"${tmpPromptFile}\" \"${filepath}\" \"${abacusKey}\" flux_pro`,\n      { encoding: 'utf8', timeout: 300000, shell: '/bin/bash' }\n    );\n    const parsed = JSON.parse(output.trim());\n    if (!parsed.success) throw new Error(parsed.error || 'Image generation failed');\n    return parsed;\n  } finally {\n    try { fs.unlinkSync(tmpPromptFile); } catch(_) {}\n  }\n}\n\n// Read title & subtitle from script.md for the thumbnail\nconst scriptPath = path.join(dir, 'script.md');\nlet title    = 'Cyber Fraud Alert';\nlet subtitle = 'Apne aap ko bachao';\nif (fs.existsSync(scriptPath)) {\n  const lines = fs.readFileSync(scriptPath, 'utf8')\n                  .split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n  if (lines[0]) title    = lines[0].replace(/^(TITLE:|#{1,3})\\s*/i, '').trim();\n  if (lines[1]) subtitle = lines[1].replace(/^(SUBTITLE:|#{1,3})\\s*/i, '').trim();\n}\n\nconst thumbnailPrompt = `YouTube thumbnail style portrait. A close-up of a middle-aged Indian man in a bright yellow or orange kurta, facing camera directly, eyes wide open with a bold alert expression — eyebrows raised, mouth slightly open in a warning gesture, pointing finger toward camera. Bright vivid background with deep red and yellow gradient. High-key studio lighting, sharp focus, vibrant saturated colors, ultra-realistic photographic quality, 16:9 widescreen, no text, no captions.`;\n\nconst items = $input.all();\n\n// Generate thumbnail (image0) first\nconsole.log('Generating thumbnail (image0)...');\nconst thumbPath = path.join(imgsDir, 'image0.jpeg');\nconst thumbResult = generateImage(thumbnailPrompt, thumbPath);\nconsole.log(`  image0.jpeg: ${thumbResult.size_kb}KB`);\n\n// Add title text overlay to image0 (YouTube thumbnail style)\nconst thumbTextScript = path.join(dir, 'thumbnail_text.py');\nif (fs.existsSync(thumbTextScript)) {\n  const thumbTextOut = execSync(\n    `python3 \"${thumbTextScript}\" \"${thumbPath}\" ${JSON.stringify(title)} \"${thumbPath}\"`,\n    { encoding: 'utf8', timeout: 60000, shell: '/bin/bash' }\n  );\n  try {\n    const ttr = JSON.parse(thumbTextOut.trim());\n    if (!ttr.success) console.log('thumbnail_text warning:', ttr.error);\n    else console.log(`  image0 text overlay: ${ttr.lines} lines`);\n  } catch(_) { console.log('thumbnail_text output:', thumbTextOut.slice(0,200)); }\n}\n\n// Generate story images sequentially\nconst results = [];\nfor (const item of items) {\n  const { prompt, filename, news_index, headline, variant, is_thumbnail } = item.json;\n  const filepath = path.join(imgsDir, filename);\n  console.log(`Generating ${filename}...`);\n  const result = generateImage(prompt, filepath);\n  console.log(`  ${filename}: ${result.size_kb}KB`);\n  results.push({\n    json: {\n      filename,\n      filepath,\n      news_index,\n      headline,\n      variant,\n      is_thumbnail,\n      size_kb: result.size_kb,\n      thumbnail: {\n        generated: true,\n        path: thumbPath,\n        size_kb: thumbResult.size_kb,\n        title,\n        subtitle,\n      },\n    },\n  });\n}\n\nreturn results;"
       },
-      "id": "e275adbf-eaa0-4978-8e8f-7d55e1ce5d7e",
+      "id": "9b2e2249-7dd5-4522-97f4-cf6f5467f6a9",
       "name": "💾 Save Image to Disk1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -496,
-        272
+        -1088,
+        3168
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nif (!fs.existsSync(excelPath)) throw new Error('script_editor.xlsx not found — run Stage 1 first.');\n\nconst pyCode = `\nimport openpyxl, json, sys, os\nwb = openpyxl.load_workbook(sys.argv[1])\nws = wb['Script Editor']\nTEXT_COL   = 1\nDATA_START = 4\nparagraphs = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        paragraphs.append(str(val).strip())\n\nscript_path = os.path.join(os.path.dirname(sys.argv[1]), 'script.md')\ntitle    = 'Cyber Fraud Alert'\nsubtitle = 'Apne aap ko bachao'\nif os.path.exists(script_path):\n    lines = [l.strip() for l in open(script_path, encoding='utf-8') if l.strip()]\n    if lines:         title    = lines[0].replace('TITLE:', '').replace('#', '').strip()\n    if len(lines) > 1: subtitle = lines[1].replace('SUBTITLE:', '').replace('#', '').strip()\n\ncontent_paras = paragraphs[1:] if len(paragraphs) > 1 else paragraphs\nsep = chr(10)\nnumbered = (sep+sep).join('PARAGRAPH ' + str(i+1) + ':' + sep + p for i, p in enumerate(content_paras))\nprint(json.dumps({'title':title,'subtitle':subtitle,'paragraphCount':len(paragraphs),'imagesNeeded':len(content_paras),'numberedParagraphs':numbered}))\n`;\n\nconst pyPath = path.join(dir, '_read_excel_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\nlet result = '';\ntry {\n  result = execSync(`python3 \"${pyPath}\" \"${excelPath}\"`, { encoding: 'utf8', timeout: 30000 });\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\nreturn [{ json: JSON.parse(result.trim()) }];"
       },
-      "id": "1bebc136-284f-4f4c-944a-88ac657bb54b",
+      "id": "e6808613-824f-4d1d-bb85-f598df1bb2d5",
       "name": "📖 Read Paragraphs from Excel",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1264,
-        272
+        -1856,
+        3168
       ]
     },
     {
       "parameters": {
         "jsCode": "const fs = require('fs'), path = require('path');\nconst { execSync } = require('child_process');\n\nconst rawDir = $env.BANKING_EXPERT_DIR || '/Users/ramdudeja/Desktop/bankingexpertram_abacus';\nconst dir = rawDir.split(',')[0].trim();\nconst excelPath = path.join(dir, 'script_editor.xlsx');\nif (!fs.existsSync(excelPath)) throw new Error('script_editor.xlsx not found: ' + excelPath);\n\nconst pyCode = `\nimport openpyxl, os, json, sys\nfrom openpyxl.worksheet.datavalidation import DataValidation\nexcel_path = sys.argv[1]\nimg_dir    = sys.argv[2]\nwb = openpyxl.load_workbook(excel_path)\nws = wb['Script Editor']\nTEXT_COL   = 1\nIMAGE_COL  = 2\nDATA_START = 4\ndata_rows = []\nfor row in ws.iter_rows(min_row=DATA_START):\n    val = ws.cell(row=row[0].row, column=TEXT_COL).value\n    if val and str(val).strip():\n        data_rows.append(row[0].row)\nn = len(data_rows)\nfor i, row_num in enumerate(data_rows):\n    ws.cell(row=row_num, column=IMAGE_COL).value = i\ngen_images = sorted(\n    [f.replace('.jpeg','') for f in os.listdir(img_dir)\n     if f.startswith('image') and f.endswith('.jpeg') and f != 'image0.jpeg'],\n    key=lambda x: int(x.replace('image','')) if x.replace('image','').isdigit() else 9999\n)\nif 'Image Reference' in wb.sheetnames:\n    ref_ws = wb['Image Reference']\n    for row in ref_ws.iter_rows(min_row=2):\n        for cell in row: cell.value = None\n    for idx, name in enumerate(gen_images):\n        ref_ws.cell(row=idx+2, column=1).value = int(name.replace('image',''))\n        ref_ws.cell(row=idx+2, column=2).value = name + '.jpeg'\nws.data_validations.dataValidation = [\n    dv for dv in ws.data_validations.dataValidation if 'B' not in str(dv.sqref)\n]\nmax_img  = max([int(name.replace('image','')) for name in gen_images], default=0)\nnum_list = ','.join(str(x) for x in range(0, max_img+1))\ndv = DataValidation(type='list', formula1='\"' + num_list + '\"', allow_blank=True, showErrorMessage=False)\ndv.sqref = 'B' + str(DATA_START) + ':B' + str(data_rows[-1])\nws.add_data_validation(dv)\nwb.save(excel_path)\nprint(json.dumps({'success':True,'paragraphs':n,'images':len(gen_images)}))\n`;\n\nconst pyPath = path.join(dir, '_automap_tmp.py');\nfs.writeFileSync(pyPath, pyCode, 'utf8');\nlet mapResult = '', mapError = '';\ntry {\n  mapResult = execSync(`python3 \"${pyPath}\" \"${excelPath}\" \"${dir}/images\"`,\n    { encoding: 'utf8', timeout: 30000 });\n} catch(e) {\n  mapError = (e.stderr || '') + ' ' + (e.message || '');\n} finally {\n  try { fs.unlinkSync(pyPath); } catch(_) {}\n}\nif (mapError && !mapResult.includes('\"success\": true')) {\n  throw new Error('Auto-mapper failed: ' + mapError.slice(0, 300));\n}\nconst mapJson = JSON.parse(mapResult.trim());\nconsole.log('Images auto-mapped: ' + mapJson.images + ' images, ' + mapJson.paragraphs + ' paragraphs');\nreturn [{ json: mapJson }];"
       },
-      "id": "04ba7caf-9032-4265-aba1-0af07c6d24f2",
+      "id": "28e33119-04fb-4ea1-aba5-7544a6fad5ae",
       "name": "✅ Auto-map Images to Excel",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -256,
-        288
+        -848,
+        3184
       ]
     }
   ],
@@ -589,6 +585,11 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "✅ Check Excel Created": {
+      "main": [
+        []
       ]
     },
     "🐍 Run: excel_to_video.py": {
@@ -635,7 +636,7 @@
         ]
       ]
     },
-    "🎨 OpenAI: Generate Image Prompts1": {
+    "🎨 Abacus.AI: Generate Image Prompts": {
       "main": [
         [
           {
@@ -856,11 +857,6 @@
         ]
       ]
     },
-    "💾 Save pipeline_meta.json": {
-      "main": [
-        []
-      ]
-    },
     "Code in JavaScript1": {
       "main": [
         [
@@ -896,35 +892,7 @@
     },
     "✅ Auto-map Images to Excel": {
       "main": [
-        [
-          {
-            "node": "🐍 Run: excel_to_video.py",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "🎨 Abacus.AI: Generate Image Prompts": {
-      "main": [
-        [
-          {
-            "node": "⚙️ Parse & Flatten Prompts1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "✅ Check Excel Created": {
-      "main": [
-        [
-          {
-            "node": "📖 Read Paragraphs from Excel",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },
