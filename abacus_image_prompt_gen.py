@@ -18,10 +18,11 @@ import traceback
 
 
 SYSTEM_MSG = (
-    "You generate image prompts for a Hindi YouTube cybersecurity awareness channel (@bankingexpertram). "
+    "You generate image prompts for @bankingexpertram Hindi YouTube channel — covering cybersecurity, "
+    "banking rights, govt schemes, digital tools, and consumer rights for common Indians. "
     "All characters must look visually Hindu Indian. "
-    "Women wear sari or salwar kameez with bindi on forehead — NEVER hijab or Islamic dress. "
-    "Men wear kurta-pyjama or casual Indian clothes — NO skull cap. "
+    "Women: sari or salwar kameez, bindi on forehead, bangles — NEVER hijab or Islamic dress. "
+    "Men: kurta-pyjama or casual Indian clothes, optional tilak — NO skull cap. "
     "Elderly: white kurta-dhoti. Middle-class Indian appearance throughout. "
     "Images must be ultra-realistic photographic quality with ABSOLUTELY NO text, "
     "NO speech bubbles, NO captions, NO writing of any kind anywhere in the image."
@@ -33,7 +34,13 @@ def build_user_prompt(images_needed: int, numbered_paragraphs: str) -> str:
 
 For each paragraph, create a prompt for a 2-panel photorealistic diptych (two side-by-side scenes separated by a thin black border, widescreen 16:9) that visually tells the key emotional moment of that paragraph.
 
-IMPORTANT — LAST IMAGE RULE: The very last prompt (paragraph {images_needed}) must show a HAPPY, SECURE, RELIEVED tone — a warm concluding scene. Show a smiling Indian family or individual feeling safe, confident, and protected after learning about cyber safety. Warm golden lighting, positive body language, sense of relief and empowerment. NOT dramatic, NOT fearful — uplifting and hopeful.
+VISUAL TONE — adapt to the paragraph's subject:
+- Cybersecurity/fraud paragraphs: dramatic tension, distressed faces, dim lighting showing danger
+- Banking rights/consumer rights paragraphs: determined person at bank/computer, paperwork, confident body language
+- Govt scheme/digital tools paragraphs: person successfully using phone/laptop, helpful government office, relieved expression
+- Any empowerment/solution moment: warm confident lighting, positive resolution
+
+IMPORTANT — LAST IMAGE RULE: The very last prompt (paragraph {images_needed}) MUST show a HAPPY, SECURE, RELIEVED tone — warm golden lighting, smiling Indian family or individual feeling safe and empowered. NOT dramatic. Uplifting and hopeful.
 
 STRICT CHARACTER RULES — every character must look visually Hindu Indian:
 - Women: sari or salwar kameez, bindi on forehead, bangles
@@ -41,11 +48,11 @@ STRICT CHARACTER RULES — every character must look visually Hindu Indian:
 - Elderly: white kurta-dhoti or kurta-pyjama
 - Middle-class Indian appearance throughout
 
-STRICT NO-TEXT RULES — most important rule:
+STRICT NO-TEXT RULES (most important):
 - ZERO text anywhere — no speech bubbles, no captions, no labels, no Hindi, no English
 - Pure visual storytelling through expressions, gestures, body language, environment
 
-STYLE: Ultra-realistic cinematic photography — dramatic lighting, shallow depth of field, warm Indian home/street/office environments, highly expressive faces, professional photo-journalism level realism.
+STYLE: Ultra-realistic cinematic photography — shallow depth of field, warm Indian home/street/office/bank environments, highly expressive faces, professional photo-journalism level realism.
 
 Return ONLY a valid JSON array of strings (one prompt per element). No explanation, no markdown, just the JSON array.
 

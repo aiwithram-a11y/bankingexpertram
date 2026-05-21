@@ -93,7 +93,7 @@ def generate_image(prompt: str, output_path: str, api_key: str, model: str) -> d
         f.write(img_bytes)
 
     try:
-        from PIL import Image
+        from PIL import Image, ImageStat
         img = Image.open(tmp_path)
         if img.mode in ('RGBA', 'P', 'LA'):
             img = img.convert('RGB')
@@ -102,8 +102,21 @@ def generate_image(prompt: str, output_path: str, api_key: str, model: str) -> d
         if img.width > max_w:
             ratio = max_w / img.width
             img = img.resize((max_w, int(img.height * ratio)), Image.LANCZOS)
+
+        # Detect blank/black image — reject and signal retry
+        stat = ImageStat.Stat(img)
+        mean_brightness = sum(stat.mean) / len(stat.mean)
+        if mean_brightness < 12:
+            os.remove(tmp_path)
+            raise ValueError(
+                f'Generated image is blank/black (mean brightness {mean_brightness:.1f}/255). '
+                'API returned an empty image — will retry.'
+            )
+
         img.save(output_path, 'JPEG', quality=92, optimize=True)
         os.remove(tmp_path)
+    except ValueError:
+        raise  # Re-raise blank-image error so retry logic sees it
     except Exception:
         # If Pillow fails, save as-is and rename
         if os.path.exists(tmp_path):
@@ -128,18 +141,32 @@ def main():
     with open(prompt_file, encoding='utf-8') as f:
         prompt = f.read().strip()
 
-    try:
-        result = generate_image(prompt, output_path, api_key, model)
-        size_kb = os.path.getsize(output_path) // 1024 if os.path.exists(output_path) else 0
-        result['size_kb'] = size_kb
-        print(json.dumps(result, ensure_ascii=False))
-
-    except Exception as e:
-        print(json.dumps({
-            'success': False,
-            'error': str(e),
-            'trace': traceback.format_exc()[-800:],
-        }, ensure_ascii=False))
+    MAX_RETRIES = 3
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            result = generate_image(prompt, output_path, api_key, model)
+            size_kb = os.path.getsize(output_path) // 1024 if os.path.exists(output_path) else 0
+            result['size_kb'] = size_kb
+            if attempt > 1:
+                result['retries'] = attempt - 1
+            print(json.dumps(result, ensure_ascii=False))
+            break
+        except Exception as e:
+            last_error = e
+            is_blank = 'blank' in str(e).lower() or 'black' in str(e).lower()
+            if attempt < MAX_RETRIES and is_blank:
+                import time
+                time.sleep(3)
+                continue  # retry on blank image
+            # Non-blank error or exhausted retries
+            print(json.dumps({
+                'success': False,
+                'error': str(e),
+                'attempts': attempt,
+                'trace': traceback.format_exc()[-800:],
+            }, ensure_ascii=False))
+            break
 
 
 if __name__ == '__main__':

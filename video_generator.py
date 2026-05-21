@@ -41,7 +41,7 @@ TTS_RATE = 158
 CRF = 20
 
 # ── Multi-Image Config ─────────────────────────────────────────────────────────
-IMAGE_BASE_DIR = "/Users/ramdudeja/Desktop/bankingexpertram_abacus/images"
+IMAGE_BASE_DIR = "/Users/ramdudeja/Desktop/bankingexpertram_abacus_auto/images"
 
 # Default empty map — populated at runtime from --image-map JSON.
 PARA_TO_IMAGE_MAP: dict = {}
