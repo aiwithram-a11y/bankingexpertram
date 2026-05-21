@@ -531,6 +531,37 @@ def parse_sections(filepath):
     return sections
 
 
+_URL_SPOKEN = {
+    "cybercrime.gov.in":        "National Cybercrime portal",
+    "myaadhaar.uidai.gov.in":   "myAadhaar portal",
+    "uidai.gov.in":             "UIDAI official website",
+    "incometax.gov.in":         "Income Tax portal",
+    "epfindia.gov.in":          "EPFO portal",
+    "umang.gov.in":             "UMANG portal",
+    "india.gov.in":             "India Government portal",
+    "irctc.co.in":              "IRCTC portal",
+    "digilocker.gov.in":        "DigiLocker portal",
+    "npci.org.in":              "NPCI portal",
+    "rbi.org.in":               "RBI official website",
+    "sebi.gov.in":              "SEBI official website",
+    "passportindia.gov.in":     "Passport Seva portal",
+    "digitalindia.gov.in":      "Digital India portal",
+}
+
+
+def clean_for_tts(text: str) -> str:
+    """Replace domain-style URLs with spoken equivalents so Sarvam TTS
+    does not stutter or repeat '.gov.in' syllables for every URL it encounters."""
+    # Named replacements first (longest match wins because dict is ordered)
+    for domain, spoken in _URL_SPOKEN.items():
+        text = re.sub(re.escape(domain), spoken, text, flags=re.IGNORECASE)
+    # Catch-all: any remaining *.gov.in or *.gov.in/path → "official government portal"
+    text = re.sub(r'\b\w[\w.-]*\.gov\.in(?:/\S*)?', 'official government portal', text, flags=re.IGNORECASE)
+    # Any other remaining bare domain (word.word.in or word.co.in) → drop the domain suffix
+    text = re.sub(r'\b(\w+)\.(?:co|org|net|ac)\.in(?:/\S*)?', r'\1 portal', text, flags=re.IGNORECASE)
+    return text
+
+
 def split_sentences(text):
     """Split on Devanagari danda (।), English full-stop (.), ?, or !.
     Avoids splitting on decimal numbers (3.14) and common abbreviations.
@@ -652,14 +683,16 @@ def generate_audio_macos(text: str, output_path: str) -> float:
 
 
 def generate_audio(text: str, idx: int, use_sarvam: bool = True):
-    text_hash = hashlib.md5(text.encode()).hexdigest()[:8]
+    # Clean URLs before hashing so stale cache from old unclean audio is bypassed
+    clean_text = clean_for_tts(text)
+    text_hash = hashlib.md5(clean_text.encode()).hexdigest()[:8]
     mp3_path = AUDIO_DIR / f"audio_{idx:04d}_{text_hash}.mp3"
     if mp3_path.exists():
         return mp3_path, get_duration(mp3_path)
     if use_sarvam and not ARGS.no_sarvam:
-        dur = generate_audio_sarvam(text, str(mp3_path))
+        dur = generate_audio_sarvam(clean_text, str(mp3_path))
     else:
-        dur = generate_audio_macos(text, str(mp3_path))
+        dur = generate_audio_macos(clean_text, str(mp3_path))
     return mp3_path, dur
 
 
