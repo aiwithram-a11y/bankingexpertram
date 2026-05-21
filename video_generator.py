@@ -486,12 +486,16 @@ def parse_sections(filepath):
     with open(filepath, encoding="utf-8") as f:
         raw = f.read()
 
-    has_headings = any(line.lstrip().startswith('#') for line in raw.splitlines())
+    heading_lines = [l for l in raw.splitlines() if l.lstrip().startswith('#')]
+    # Only use heading-based section split when there are MULTIPLE # headings.
+    # A single # line is just a video title — treat it as title-only and split
+    # the body on blank lines (the format daily_script.py generates).
+    has_multi_headings = len(heading_lines) >= 2
 
     sections = []
 
-    if has_headings:
-        # ── Original heading-based split ──────────────────────────────────────
+    if has_multi_headings:
+        # ── Multiple-heading mode: each # line starts a new section ───────────
         lines         = raw.split('\n')
         current_title = None
         current_body  = []
@@ -518,12 +522,20 @@ def parse_sections(filepath):
                 sections.append({"title": current_title, "body": body})
 
     else:
-        # ── Blank-line-separated paragraph split ──────────────────────────────
-        # Split on one or more consecutive blank lines
-        blocks = re.split(r'\n\s*\n', raw.strip())
+        # ── Single-title or no-heading mode: strip the # title, split body
+        #    on blank lines — one paragraph per section ────────────────────────
+        raw_lines  = raw.splitlines()
+        body_lines = []
+        for line in raw_lines:
+            if line.lstrip().startswith('#'):
+                continue   # drop the title line
+            body_lines.append(line)
+        body_text = '\n'.join(body_lines).strip()
+
+        blocks   = re.split(r'\n\s*\n', body_text)
         para_num = 1
         for block in blocks:
-            body = ' '.join(line.strip() for line in block.splitlines() if line.strip())
+            body = ' '.join(l.strip() for l in block.splitlines() if l.strip())
             if body:
                 sections.append({"title": f"Para {para_num}", "body": body})
                 para_num += 1
