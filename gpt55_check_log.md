@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-09-09
+- Status: NOT FOUND (as image generation model)
+- Models seen (image generation, via web search — direct abacus.ai access blocked, 10th consecutive day): GPT Image 1.5, GPT Image 2, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 10th consecutive day). Web search via WebSearch confirmed: GPT-5.5 ("Spud") was released by OpenAI on April 23, 2026, but it is a language/LLM model — NOT an image generation model. Its codename is "Spud". Alongside it, OpenAI released GPT Image 2 (the image generation successor). Abacus.AI's current image generation lineup does NOT include "GPT-5.5" — GPT Image 1.5 and GPT Image 2 remain the latest GPT-family image models. Sources: openai.com/index/introducing-gpt-5-5/, studio.abacus.ai/faq. No GPT-5.5 image model is imminent or announced.
+
 ## 2026-08-31
 - Status: CHECK BLOCKED
 - Models seen: N/A — abacus.ai is blocked by the remote execution environment's network egress proxy
