@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-09-10
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 11th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, GPT Image 2, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, Flux Ultra
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 11th consecutive day). Web search confirmed: GPT-5.5 IS available on Abacus.AI but only as a language/LLM (text generation) model — NOT an image generation model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in the image generation model lineup on Abacus.AI. GPT Image 1.5 and GPT Image 2 remain the latest GPT-family image generation models. Sources: eesel.ai/blog/abacus-ai-pricing, studio.abacus.ai/faq, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review.
+
 ## 2026-09-09
 - Status: NOT FOUND (as image generation model)
 - Models seen (image generation, via web search — direct abacus.ai access blocked, 10th consecutive day): GPT Image 1.5, GPT Image 2, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit
