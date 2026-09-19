@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-09-19
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 20th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, GPT Image 2, GPT Image 2.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Flux Ultra, Flux Kontext, Flux-1 PRO, Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 20th consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model. Abacus.AI's ChatLLM platform offers GPT-5.5 as a text model. No dedicated GPT-5.5 image generation model announced or available. The latest GPT-family image model on Abacus.AI remains GPT Image 2.5. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in the image generation lineup. Sources: en.wikipedia.org/wiki/GPT-5.5, medium.com/ai-analytics-diaries/abacus-ai-review-2026, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review.
+
 ## 2026-09-18
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 19th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, GPT Image 2, GPT Image 2.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Flux Ultra, Flux Kontext, Flux-1 PRO, Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2
