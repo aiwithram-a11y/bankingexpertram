@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-09-25
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 26th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, GPT Image 2, GPT Image 2.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Flux Ultra, Flux Kontext, Flux-1 PRO, Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Grok Imagine
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 26th consecutive day). Web search confirms GPT-5.5 (available on Abacus.AI's ChatLLM as a language model alongside GPT-5.5 Thinking, GPT-5.5 Pro, GPT-5.3 Codex, Opus 4.8, Gemini 3.1 Pro) remains a language/LLM model ONLY — NOT an image generation model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in the image generation lineup. Image model lineup unchanged from 2026-09-24; the latest GPT-family image model remains GPT Image 2.5 (released Sept 8 2026). Sources: kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, eesel.ai/blog/abacus-ai-pricing, medium.com/ai-analytics-diaries/abacus-ai-review-2026, chatllm.abacus.ai/faq.
+
 ## 2026-09-24
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 25th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, GPT Image 2, GPT Image 2.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Nano Banana Lite (NEW), Seedream 4.5, Seedream 5 Pro (NEW), Seedream 5 Lite (NEW), Meta Muse Image (NEW), Midjourney, Grok Imagine Image, Grok Imagine Image 2 (NEW), Grok Imagine Quality (NEW), Grok Imagine, FLUX.2 [Pro], Flux Ultra, Flux Kontext, Flux-1 PRO, Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Recraft Vectorize (NEW), Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E
