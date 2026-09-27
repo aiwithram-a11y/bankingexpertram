@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-09-27
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 28th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, Grok Imagine, FLUX.2 [Pro], Flux Ultra, Flux Kontext, Flux-1 PRO, Ideogram 3.0, Recraft SVG, DALL-E, Magnific Upscaler, Qwen Image Edit, Sora 2
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 28th consecutive day). Web search confirms GPT-5.5 (available on Abacus.AI's ChatLLM/Studio as a language model alongside Claude Opus 4.8 and Gemini 3.1 Pro) remains a language/LLM model ONLY — NOT a dedicated image generation model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in the image generation model lineup. Image generation lineup unchanged from 2026-09-26; the latest GPT-family image model remains GPT Image 2.5. Sources: eesel.ai/blog/abacus-ai-pricing, medium.com/ai-analytics-diaries/abacus-ai-review-2026, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, studio.abacus.ai/faq.
+
 ## 2026-09-26
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 27th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana 2, Nano Banana Pro, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Seedream 4.5, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, Grok Imagine, FLUX.2 [Pro], Flux Ultra, Flux Kontext, Flux-1 PRO, Ideogram 3.0, Recraft SVG, Recraft, DALL-E, Magnific Upscaler, Qwen Image Edit
