@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-04
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 35th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, FLUX.2 [Pro], Midjourney, Hunyuan Image 3.0, Wan 2.7, Ideogram 3.0, Recraft SVG
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 35th consecutive day). Web search confirms GPT-5.5 is available on Abacus.AI's ChatLLM as a language/LLM model (alongside Claude Opus 4.8, Gemini 3.1 Pro) — NOT a dedicated image generation model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in the image generation model lineup. Image generation lineup consistent with 2026-10-03; the latest GPT-family image model remains GPT Image 2.5. Sources: abacus.ai/foundation_models, kdnuggets.com/2026/05/abacus/abacus-ai-review, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, eesel.ai/blog/abacus-ai-pricing, studio.abacus.ai/faq.
+
 ## 2026-10-03
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 34th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, Nano Banana Pro, FLUX.2 [Pro], Flux Kontext, Flux Ultra, Flux-1 PRO, Seedream, Recraft, Ideogram, Grok Imagine, DALL-E
