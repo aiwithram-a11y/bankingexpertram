@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-05
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 36th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): Nano Banana Pro, Flux Ultra Pro, Grok Imagine, Sora 2, Kling 2.6, Motion Control, Veo-3 (plus prior confirmed: GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana 2, Seedream 5 Pro, Seedream 5 Lite, Grok Imagine Image 2, FLUX.2 [Pro], Recraft SVG, Ideogram 3.0, DALL-E)
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: EGRESS_BLOCKED, 36th consecutive day). Web search returned no mention of '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', or 'gpt_55' in any image generation context on Abacus.AI. One search result referenced GPT 5.2 as an LLM on Abacus.AI — no GPT-5.5 image generation model found. Sources: abacus.ai/vision, modelcompare.dev/providers/abacus, atlascloud.ai/blog/best-ai-image-generation-models-2026, toolhalla.ai/compare/abacus-deepagent-vs-midjourney.
+
 ## 2026-10-04
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 35th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, FLUX.2 [Pro], Midjourney, Hunyuan Image 3.0, Wan 2.7, Ideogram 3.0, Recraft SVG
