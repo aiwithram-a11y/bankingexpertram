@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-10
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 41st consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, FLUX.2 Pro, Flux Kontext, Midjourney, Hunyuan Image 3.0, Wan 2.7, Ideogram 3.0, Recraft SVG, Recraft Vectorize, Qwen Image Edit, Magnific Upscaler, Sora 2, Kling 2.6, Veo-3, Motion Control, DALL-E
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 41st consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT a dedicated image generation model on Abacus.AI. The ChatLLM FAQ page explicitly lists GPT-5.5 under chat/LLM models (alongside GPT-5.5 Thinking, Codex 5.3, GPT-5.5 Pro, o3, Sonnet 4.6) with a separate "GPT-Image" entry for image generation. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. Image generation lineup unchanged from 2026-10-09; the latest GPT-family image model remains GPT Image 2.5. Sources: appllm.abacus.ai/chat_llm_faq, en.wikipedia.org/wiki/GPT-5.5, apps.apple.com/us/app/chatllm-ai-chat-and-agents/id6502844681.
+
 ## 2026-10-09
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 40th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, FLUX.2 Pro, Midjourney, Hunyuan Image 3.0, Wan 2.7, Ideogram 3.0, Recraft SVG, Recraft Vectorize, Qwen Image Edit, Magnific Upscaler, Sora 2, Kling 2.6, Veo-3, Motion Control, DALL-E
