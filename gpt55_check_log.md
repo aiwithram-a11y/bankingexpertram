@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-11
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 42nd consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 Pro, Flux Pro, Recraft, Ideogram, DALL-E, Sora 2
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 42nd consecutive day). Web search confirms GPT-5.5 ("Spud", released Apr 23 2026) remains a language/LLM model ONLY — NOT a dedicated image generation model on Abacus.AI. Abacus.AI's own ChatLLM page (sourced ~61 days ago) lists Nano Banana Pro and GPT Image 2.5 as image options. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. Image generation lineup unchanged from 2026-10-10; the latest GPT-family image model remains GPT Image 2.5. GPT-5.5 is also noted alongside GPT-5.6 Terra on the platform as a language model, suggesting it may be superseded by newer LLMs. Sources: medium.com/ai-analytics-diaries/abacus-ai-review-2026, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, eesel.ai/blog/abacus-ai-pricing, getdeploying.com/llms/gpt-5.5.
+
 ## 2026-10-10
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 41st consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Grok Imagine Image, Grok Imagine Quality, FLUX.2 Pro, Flux Kontext, Midjourney, Hunyuan Image 3.0, Wan 2.7, Ideogram 3.0, Recraft SVG, Recraft Vectorize, Qwen Image Edit, Magnific Upscaler, Sora 2, Kling 2.6, Veo-3, Motion Control, DALL-E
