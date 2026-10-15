@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-15
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 46th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 Pro, Ideogram 3.0, Recraft SVG, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0, Veo-3, Kling, Imagen 4
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 46th consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. The official Abacus.AI X post (x.com/abacusai/status/2051335292108337208) explicitly describes GPT-5.5 (thinking) working "alongside" image/video tools (Grok Imagine, Nano Banana Pro, SeeDance 2.0) as an LLM connector, not as an image generator. ChatLLM FAQ and Studio pages confirm image lineup as: GPT Image 2.5, Nano Banana Pro, Flux Ultra (no GPT-5.5 image model listed). Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. Image generation lineup unchanged from 2026-10-14. The latest GPT-family image model remains GPT Image 2.5. Sources: x.com/abacusai/status/2051335292108337208, chatllm.abacus.ai/faq, studio.abacus.ai, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, medium.com/ai-analytics-diaries/abacus-ai-review-2026.
+
 ## 2026-10-14
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 45th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 Pro, Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0
