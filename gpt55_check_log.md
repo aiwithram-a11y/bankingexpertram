@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-17
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 48th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 4.5, FLUX.2 Pro, Midjourney, Grok Imagine Image, Recraft SVG, Ideogram 3.0, Imagen 4, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, curl: CONNECT tunnel 403, 48th consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. No Abacus.AI-specific results found for October 2026 image model lineup changes. GPT-5.5 ("Spud", released Apr 23 2026) continues to appear only in LLM/text model listings. NOTABLE: OpenAI gpt-image-1 scheduled to sunset October 23, 2026; gpt-image-1.5 scheduled to sunset December 1, 2026 — if Abacus.AI still routes to these model IDs, updates to abacus_image_gen.py may be required soon. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. Latest GPT-family image model remains GPT Image 2.5. Sources: invideo.io/blog/gpt-image-ai-image-generator/, getdeploying.com/llms/gpt-5.5, docs.swiftask.ai/changelog/new-ai-models-openai-gpt-55-and-gpt-image-2, slashdot.org/software/ai-image-generators/for-gpt-5.5-instant/.
+
 ## 2026-10-16
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 47th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 4.5, FLUX.2 Pro, Midjourney, Grok Imagine Image, Recraft SVG, Ideogram 3.0, Imagen 4, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0
