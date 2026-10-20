@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-20
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 51st consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, Nano Banana Pro, Flux Ultra, Flux Ultra Pro, Seedance, Sora 2, Kling 2.6, Motion Control, Veo-3, GPT Image 2, GPT Image 1.5
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, curl: CONNECT tunnel 403, 51st consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. Official Abacus.AI X post (x.com/abacusai/status/2051335292108337208) explicitly describes GPT-5.5 (thinking) working "alongside" image/video generation tools (Grok Imagine, Nano Banana Pro, SeeDance 2.0) as an LLM connector, not as an image generator. ChatLLM Teams page now lists GPT-6 Astra, GPT-6.1 Sol, GPT-5.6 Terra among latest LLMs — GPT-5.5 may be partially superseded by newer language models, but still no GPT-5.5 image generation model exists. Image generation lineup includes: GPT Image 2.5, Nano Banana Pro, Flux Ultra, Flux Ultra Pro, Seedance, Sora 2, Kling 2.6, Motion Control, Veo-3 — no GPT-5.5 image model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. The latest GPT-family image model remains GPT Image 2.5. Sources: x.com/abacusai/status/2051335292108337208, chatllm.abacus.ai/faq, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, vantaige.io/fr/ai-tool/chatllm.
+
 ## 2026-10-19
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 50th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 4.5, FLUX.2 Pro, Midjourney, Grok Imagine Image, Recraft SVG, Ideogram 3.0, Imagen 4, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0
