@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-21
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 52nd consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 1.5, GPT Image 2, GPT Image 2.5, Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Hunyuan Image 3.0, Wan 2.7, Imagen 4, Recraft SVG, Ideogram 3.0, Magnific Upscaler, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Qwen Image Edit, Sora 2, Kling 2.6, Veo-3, Motion Control
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 52nd consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. Official Abacus AI Studio FAQ confirms image lineup does not include any GPT-5.5 image model; GPT-5.5 is listed only in text/LLM model context. The latest GPT-family image model remains GPT Image 2.5 (released Sept 8, 2026). Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. Sources: studio.abacus.ai/faq, getdeploying.com/llms/gpt-5.5, docs.swiftask.ai/changelog/new-ai-models-openai-gpt-55-and-gpt-image-2, mastra.ai/models/providers/abacus.md.
+
 ## 2026-10-20
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 51st consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, Nano Banana Pro, Flux Ultra, Flux Ultra Pro, Seedance, Sora 2, Kling 2.6, Motion Control, Veo-3, GPT Image 2, GPT Image 1.5
