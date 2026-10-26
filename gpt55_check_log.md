@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-26
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 57th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine, FLUX.2 [Pro], Midjourney, Ideogram 3.0, Recraft SVG
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 57th consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. Abacus AI Studio FAQ (studio.abacus.ai/faq) confirms image lineup as: GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine, FLUX.2 [Pro], Midjourney, Ideogram 3.0, Recraft SVG — no GPT-5.5 image model present. ChatLLM sign-up page lists Nano Banana Pro and Sora 2 among image/video generators; LLM lineup includes GPT 6 Astra, GPT 6.1 Sol, Sonnet 5.5, Opus 5.5 — GPT-5.5 may be partially superseded by newer language models on the platform. Wikipedia confirms GPT-5.5 is a large language model (released April 23, 2026) — NOT an image model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. The latest GPT-family image model remains GPT Image 2.5. Sources: studio.abacus.ai/faq, chatllm.abacus.ai, en.wikipedia.org/wiki/GPT-5.5, en.wikipedia.org/wiki/GPT_Image, getdeploying.com/llms/gpt-5.5.
+
 ## 2026-10-25
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 56th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana Pro, Nano Banana 2, Nano Banana Lite, Seedream 5 Pro, Seedream 5 Lite, Meta Muse Image, Grok Imagine Image 2, Midjourney, FLUX.2 [Pro], Ideogram 3.0, Recraft SVG
