@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-10-30
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 61st consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image, GPT Image 2, GPT Image 2.5, Nano Banana Pro, Nano Banana 2, FLUX Pro, Flux Ultra, Flux Kontext, Seedream, Recraft, Ideogram 3.0, DALL-E, Sora 2, Veo 3.1, Kling (prior confirmed: GPT Image 1.5, Seedream 4.5, Grok Imagine, FLUX.2 Pro, Recraft SVG, Ideogram 3.0)
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 61st consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. No October 2026 announcement found tying GPT-5.5 to image generation on Abacus.AI. KDnuggets June 2026 review lists image lineup as: GPT Image, Nano Banana Pro, Flux Pro, Flux Kontext, Ideogram, Recraft — no GPT-5.5 image model. ChatLLM FAQ lists GPT Image, Nano Banana 2, FLUX Pro, Flux Kontext, Seedream, Recraft, Ideogram, DALL-E — no GPT-5.5 image model. GPT-5.5 (released Apr 23, 2026) continues to appear only in LLM/text model listings. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation context. The latest GPT-family image model remains GPT Image 2.5 (released Sept 8, 2026). Sources: en.wikipedia.org/wiki/GPT-5.5, en.wikipedia.org/wiki/GPT_Image, kdnuggets.com/2026/06/abacus/abacus-ai-chatllm-review, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, medium.com/ai-analytics-diaries/abacus-ai-review-2026, chatllm.abacus.ai/faq, eesel.ai/blog/abacus-ai-pricing.
+
 ## 2026-10-29
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 60th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): Nano Banana Pro, Flux, GPT Image 2, Sora 2, Veo 3.1, Kling (plus prior confirmed: GPT Image 2.5, GPT Image 1.5, Nano Banana 2, Seedream 4.5, Grok Imagine, FLUX.2 Pro, Recraft SVG, Ideogram 3.0)
