@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-11-01
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 63rd consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Flux Ultra, Recraft SVG, Ideogram 3.0, Sora 2 (prior confirmed full lineup from 2026-10-31)
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 63rd consecutive day). Extended web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. GPT-5.5 supports image INPUT (multimodal) but does NOT generate images natively; it calls gpt-image-2 as a downstream tool via the Responses API. No November 2026 announcement found adding GPT-5.5 as a dedicated image generation model on Abacus.AI. whichllm.io confirms GPT-5.5 on Abacus has text output modalities only (no image output). Latest GPT-family image model on Abacus.AI remains GPT Image 2.5 (released Sept 8, 2026). Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation model context on Abacus.AI. Sources: whichllm.io/models/abacus-gpt-5-5, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, medium.com/ai-analytics-diaries/abacus-ai-review-2026, studio.abacus.ai/faq, xairouter.com/en/blog/gpt-5-5-gpt-image-2-xai-router.
+
 ## 2026-10-31
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 62nd consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.0, GPT Image 2, GPT Image 2.5, GPT Image 1.5, Nano Banana Pro, Flux Pro, Flux Kontext, SeeDance 2.0, Ideogram, Recraft (prior confirmed: full lineup from 2026-10-30)
