@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-11-02
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 64th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana Pro, Nano Banana 2, Seedream 4.5, FLUX.2 [Pro], Flux Kontext, Midjourney, Grok Imagine Image, Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2 (prior confirmed full lineup from 2026-11-01)
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 64th consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. No November 2026 announcement found adding GPT-5.5 as a dedicated image generation model on Abacus.AI. GPT-5.5's image capability continues to mean native image INPUT (multimodal) and delegating to gpt-image-2 downstream for generation, not a standalone image generation model. Abacus AI Studio FAQ confirms image editing lineup includes GPT Image 1.5 [Edit], GPT Image 2 [Edit], and Qwen Image Edit — no GPT-5.5 image model. The latest GPT-family image model on Abacus.AI remains GPT Image 2.5. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation model context on Abacus.AI. Sources: studio.abacus.ai/faq, xairouter.com/en/blog/gpt-5-5-gpt-image-2-xai-router, engineered.at/articles/gpt-5-5-and-gpt-image-2-what-actually-changed, lmmarketcap.com/ai-models-with-image-output.
+
 ## 2026-11-01
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 63rd consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Flux Ultra, Recraft SVG, Ideogram 3.0, Sora 2 (prior confirmed full lineup from 2026-10-31)
