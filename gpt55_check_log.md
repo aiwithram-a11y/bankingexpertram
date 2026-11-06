@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-11-06
+- Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 68th consecutive day)
+- Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0 (consistent with 2026-11-05 lineup)
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 68th consecutive day). Web search confirms GPT-5.5 remains a language/LLM model ONLY — NOT an image generation model on Abacus.AI. whichllm.io confirms GPT-5.5 on Abacus has input modalities text+image and output modalities text ONLY (no image output). KDnuggets and eesel.ai reviews confirm image generation lineup includes GPT Image 2.5 and Nano Banana Pro as primary image models — no GPT-5.5 image generation model listed. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation model context on Abacus.AI. The latest GPT-family image model on Abacus.AI remains GPT Image 2.5. Sources: whichllm.io/models/abacus-gpt-5-5, kdnuggets.com/2026/08/abacus/honest-abacus-ai-review, medium.com/ai-analytics-diaries/abacus-ai-review-2026, chatllm.abacus.ai, en.wikipedia.org/wiki/GPT_Image.
+
 ## 2026-11-05
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 67th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, GPT Image 1.5 [Edit], GPT Image 2 [Edit], Nano Banana Pro, Nano Banana 2, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0 (consistent with 2026-11-04 lineup)
