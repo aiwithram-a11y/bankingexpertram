@@ -1,5 +1,10 @@
 # GPT-5.5 Availability Check Log
 
+## 2026-11-07
+- Status: NOT FOUND (as image generation model) — direct abacus.ai access blocked, 69th consecutive day
+- Models seen (image generation, via prior confirmed lineup — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0 (consistent with 2026-11-06 lineup)
+- Notes: abacus.ai domain remains blocked by the remote execution environment's network egress proxy (WebFetch: getaddrinfo ENOTFOUND abacus.ai, 69th consecutive day). Direct page fetch of https://abacus.ai/help/developer-platform/route-llm/image-analysis and https://abacus.ai/foundation_models both failed with ENOTFOUND. Carrying forward prior confirmed image model lineup unchanged. GPT-5.5 continues to be a language/LLM model ONLY on Abacus.AI — NOT an image generation model. Strings '5.5', 'gpt-5.5', 'GPT-5.5', 'gpt55', 'GPT5.5', 'gpt_55' do NOT appear in any image generation model context on Abacus.AI. The latest GPT-family image model on Abacus.AI remains GPT Image 2.5.
+
 ## 2026-11-06
 - Status: NOT FOUND (as image generation model) — inferred via web search (direct abacus.ai access blocked, 68th consecutive day)
 - Models seen (image generation, via web search — abacus.ai domain EGRESS_BLOCKED): GPT Image 2.5, GPT Image 2, GPT Image 1.5, Nano Banana 2, Nano Banana Pro, Seedream 4.5, Midjourney, Grok Imagine Image, FLUX.2 [Pro], Recraft SVG, Ideogram 3.0, Magnific Upscaler, Qwen Image Edit, DALL-E, Sora 2, SeeDance 2.0 (consistent with 2026-11-05 lineup)
